@@ -1,10 +1,10 @@
 # confparser
 
-This Python module parses a block style document into a dict using dissectors. The main goal is to parse Cisco configuration files.
+This Python module parses a block style document into a dict using dissectors. The main goal is to parse Cisco configuration files, but any vendor is supported as long as the configuration format is block style. The dissector uses indentation or end-of-block markers to determine the hierarchical level of each line.
 
 ## Overview
 
-A dissector is a nested list of dicts formatted in YAML:
+A dissector is a YAML formatted nested list of dicts with any of these keys:
 
 | Key | Description |
 | --- | --- |
@@ -19,6 +19,7 @@ A dissector is a nested list of dicts formatted in YAML:
 | actionall | Perform specified action on all named capture groups. |
 
 Supported actions are:
+
 | Value | Description |
 | --- | --- |
 | expand | Convert number ranges with hyphens and commas into list of numbers |
@@ -30,11 +31,51 @@ Supported actions are:
 
 Existing values are not overwritten but will be extended as lists.
 
-Default parameters allow parsing of most configuration files. 
+Default parameters allow parsing of most configuration files, these are examples of exceptions:
 
-To parse NXOS use indent=2
+| Dialect | Parameters |
+| --- | --- |
+| NXOS | indent=2 |
+| VSP | indent=0, eob='exit' |
 
-To parse VSP use indent=0, eob='exit'
+The dissector returns a Tree object which is a nested dict with a parser property that references the dissector used. A dissector can be created from a string or a file and can parse an iterable or a file. Multiple dissectors can be registered to the AutoDissector which uses hints to match a dissector to a file. A hint is a regular expression that is unique to the first 15 lines of a file.
+
+## Module contents
+
+`confparser.Dissector(stream, name=None)`
+Return a new Dissector object that takes a YAML formatted dissector to parse block style documents. An open file or string object is accepted. The dissector can be optionally named using the *name* parameter.
+
+`confparser.Dissector.from_file(filename, name=None)`
+Alternate constructor that loads a dissector from the specified file.
+
+`confparser.Dissector.parse(lines, indent=1, eob=None)`
+Return a new Tree object that contains the parsed document from iterable *lines*. The number of spaces for an indent is specified by the parameter *indent*. If a document doesn't use indentation, an end-of-block marker string can be specified.
+
+`confparser.Dissector.parse_str(string, indent=1, eob=None)`
+Return a new Tree object that contains the parsed string *string*.
+
+`confparser.Dissector.parse_file(filepath, indent=1, eob=None)`
+Return a new Tree object that contains the parsed file *filepath* contents.
+
+`confparser.AutoDissector()`
+Return a new AutoDissector object that handles automatic selection of parsers based on hints.
+
+`confparser.AutoDissector.register(dissector, hint, **kwarg)`
+Register Dissector object with hint regex and parser keyword arguments.
+
+`confparser.AutoDissector.register_map(dissector, function, hint, **kwarg)`
+Register Dissector object with hint regex and parser keyword arguments with function to apply to the parser iteratable, like the [map()](https://docs.python.org/3/library/functions.html#map) built-in function.
+
+`confparser.AutoDissector.from_file(filename)`
+Return a new Tree object from matching parser for specified file *filename*
+
+`confparser.Tree(**kwarg)`
+`confparser.Tree(mapping, **kwarg)`
+`confparser.Tree(iterable, **kwarg)`
+Subclass of *dict*. Return a new Tree object initialized from an optional positional argument and a possibly empty set of keyword arguments.
+
+`confparser.fixup(fd, width=132)`
+Generator that filters empty lines from given open file *fd* and concatenates wrapped lines.
 
 ## Usage
 
@@ -44,67 +85,34 @@ Basic usage of the module:
 import confparser
 
 doc = '''
-- match: vlan (\S+)
-  parent: vlan
-  action: expand
-  child:
-    match: name (?P<name>\S+)
 - match: interface (\S+)
   parent: interface
   child:
-  - match: vrf forwarding (?P<vrf>\S+)
   - match: ip address (.*)
     name: ipv4
     action: cidr
-  - match: shutdown
-    name: admin_state
-  - match: no cdp enable
-    name: cdp
-    value: disable
+  - match: standby (\d+) ip (?P<ip>\S+)
+    parent: standby
   - match: switchport trunk allowed vlan (\S+)
     name: allowed_vlan
     action: expand
-- match: router bgp (?P<local_as>\d+)
-  name: bgp
-  child:
-  - match: bgp router-id (?P<router_id>\S+)
-  - match: neighbor (\S+) remote-as (?P<remote_as>.*)
-    parent: neighbor'''
+'''
 cfg = '''
-vlan 10-12
-!
-vlan 15
- name test
-!
 interface GigabitEthernet1/1/1
  switchport trunk allowed vlan 10-12,15
- shutdown
- no cdp enable
 !
 interface Vlan10
- vrf forwarding test
  ip address 10.10.10.2 255.255.255.0
+ standby 10 ip 10.10.10.1
 !
-router bgp 65000
- bgp router-id 10.0.0.1
- neighbor 10.10.10.10 remote-as 65001
 '''
-dissector = confparser.Dissector(doc)
-print(dissector.parse(iter(cfg.splitlines())))
+print(confparser.Dissector(doc).parse_str(cfg))
 ```
 
 Output:
 
 ```
 {
-    "vlan": {
-        "10": {},
-        "11": {},
-        "12": {},
-        "15": {
-            "name": "test"
-        }
-    },
     "interface": {
         "GigabitEthernet1/1/1": {
             "allowed_vlan": [
@@ -112,30 +120,45 @@ Output:
                 "11",
                 "12",
                 "15"
-            ],
-            "admin_state": "shutdown",
-            "cdp": "disable"
+            ]
         },
         "Vlan10": {
-            "vrf": "test",
-            "ipv4": "10.10.10.2/24"
-        }
-    },
-    "bgp": {
-        "local_as": "65000",
-        "router_id": "10.0.0.1",
-        "neighbor": {
-            "10.10.10.10": {
-                "remote_as": "65001"
+            "ipv4": "10.10.10.2/24",
+            "standby": {
+                "10": {
+                    "ip": "10.10.10.1"
+                }
             }
         }
     }
 }
 ```
 
+## Advanced usage
+
+The following example loads dissectors from file and registers them to the AutoDissector with hints. All text files in the current directory are parsed using all available processor cores and written to a JSON formatted file.
+
+```python
+import confparser
+import multiprocessing
+import glob
+import json
+
+auto = confparser.AutoDissector()
+auto.register(confparser.Dissector.from_file('ios.yaml'), 'version \d+.\d+$')
+auto.register(confparser.Dissector.from_file('nxos.yaml'), 'version \d+.\d+\(\d+\)', indent=2)
+auto.register(confparser.Dissector.from_file('iosxr.yaml'), '!! IOS XR Configuration')
+pool = multiprocessing.Pool()
+result = pool.map(auto.from_file, glob.glob('*.txt'), 1)
+with open('output.json', 'w') as f:
+    json.dump({tree.source:tree for tree in result if tree}, f, indent=4)
+```
+
+The AutoDissector sets *Tree.source* to the filename of the parsed file and is used as key in the dictionary comprehention.
+
 ## Installation
 
-Make sure you have [Python](https://www.python.org/) 2.7+ or 3.2+ installed on your system. Install [ipaddress](https://pypi.org/project/ipaddress/) if you have 2.7 or 3.2 installed. Install [PyYAML](https://pypi.org/project/PyYAML/) using [PIP](https://pypi.org/project/pip/) on Linux or macOS:
+Make sure you have [Python](https://www.python.org/) 2.7+ or 3.2+ installed on your system. Install [ipaddress](https://pypi.org/project/ipaddress/) if you are using a 2.7 or 3.2 version. Install [PyYAML](https://pypi.org/project/PyYAML/) using [PIP](https://pypi.org/project/pip/) on Linux or macOS:
 
 `pip install pyyaml`
 
@@ -147,4 +170,4 @@ or on Ubuntu as follows:
 
 `sudo apt-get install python-yaml`
 
-Copy directory *confparser* to your machine.
+Just copy directory *confparser* to your machine.

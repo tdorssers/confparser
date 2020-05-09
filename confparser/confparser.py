@@ -1,7 +1,7 @@
 """
 Parse a block style document into a dict using dissectors
 
-A dissector is a nested list of dicts with any of these keys: 
+A dissector is a YAML formatted nested list of dicts with any of these keys: 
 match    : A regular expression to match at the beginning of a line. The first
            unnamed capture group can be used as key or as value. Named capture
            groups can be used to match more than one group.
@@ -27,6 +27,7 @@ split    : Split string into list of words
 list     : Convert string to list unconditionally
 cidr     : Convert netmask to prefix length in IP address string
 bool     : Sets the value to False if the line starts with 'no' or else to True
+decrypt7 : Decrypts a Cisco type 7 password
 
 Existing values are not overwritten but will be extended as lists.
 
@@ -34,6 +35,12 @@ Default parameters allow parsing of most configuration files.
 To parse NXOS use indent=2
 To parse VSP use indent=0, eob='exit'
 
+The dissector returns a Tree object which is a nested dict with a parser
+property that references the dissector used. A dissector can be created from a
+string or a file and can parse an iterable or a file. Multiple dissectors can
+be registered to the AutoDissector which uses hints to match a dissector to a
+file. A hint is a regular expression that is unique to the first 15 lines of a
+file.
 """
 
 # Author: Tim Dorssers
@@ -49,6 +56,12 @@ import itertools
 class Tree(dict):
     """ Autovivificious dictionary """
 
+    def __init__(self, *args, **kwargs):
+        """ Initialize self """
+        self.parser = None
+        self.source = None
+        self.update(*args, **kwargs)
+
     def __missing__(self, key):
         """ Implement self[key] when key is not in the dictionary """
         value = self[key] = type(self)()
@@ -62,11 +75,12 @@ class Tree(dict):
         """ Update dict with other and concatenate values of existing keys """
         for key in other.keys():
             if key in self:
+                # Make sure value is a list
                 v = other[key] if isinstance(other[key], list) else [other[key]]
                 if isinstance(self[key], list):
-                    self[key] += v
+                    self[key] += v  # Append value to list
                 else:
-                    self[key] = [self[key]] + v
+                    self[key] = [self[key]] + v  # Make list and append value
             else:
                 self[key] = other[key]
 
@@ -74,8 +88,9 @@ class Tree(dict):
 class Dissector(object):
     """ Takes a YAML formatted dissector to parse block style documents """
 
-    def __init__(self, stream):
+    def __init__(self, stream, name=None):
         """ Initialize self """
+        self.name = name  # Optional name of dissector
         self.context = yaml.safe_load(stream)
         self._compile_dissector(self.context)
 
@@ -89,24 +104,74 @@ class Dissector(object):
                 item['prog'] = re.compile(item['search'])
             else:
                 raise KeyError("Missing 'match' or 'search' key")
+            # Parse child using recursion
             if 'child' in item:
                 self._compile_dissector(item['child'])
 
     @classmethod
-    def from_file(cls, filename):
+    def from_file(cls, filename, **kwargs):
         """ Alternate constructor that loads a dissector from file """
         with open(filename) as f:
             buf = f.read()
-        return cls(buf)
+        # Create instance using filename as name
+        return cls(buf, **kwargs)
 
     def parse(self, lines, **kwargs):
-        """ Returns a Tree object that contains the parsed iterable """
-        return _parse(lines, self.context, **kwargs)
+        """ Return a Tree object that contains the parsed iterable """
+        tree = _parse(lines, self.context, **kwargs)
+        tree.parser = self  # Store reference of used dissector
+        return tree
+
+    def parse_str(self, string, **kwargs):
+        """ Return a Tree object that contains the parsed string """
+        tree = _parse(iter(string.splitlines()), self.context, **kwargs)
+        tree.parser = self
+        return tree
 
     def parse_file(self, filepath, **kwargs):
-        """ Returns a Tree object that contains the parsed file contents """
+        """ Return a Tree object that contains the parsed file contents """
         with open(filepath) as f:
-            return _parse(f, self.context, **kwargs)
+            tree = _parse(f, self.context, **kwargs)
+            tree.parser = self
+            return tree
+
+
+class AutoDissector(object):
+    """ Handles automatic selection of parsers based on hints """
+
+    def __init__(self):
+        """ Initialize self """
+        self.parsers = {}
+
+    def register(self, dissector, hint, **kwargs):
+        """ Register dissector object with hint regex and parser arguments """
+        if not isinstance(dissector, Dissector):
+            raise TypeError('Expected a dissector object')
+        self.parsers[dissector] = {'hint': re.compile(hint), 'kwargs': kwargs}
+
+    def register_map(self, dissector, function, hint, **kwargs):
+        """ Register with function to apply to the parser iteratable """
+        if not isinstance(dissector, Dissector):
+            raise TypeError('Expected a dissector object')
+        self.parsers[dissector] = {'hint': re.compile(hint),
+                                   'function': function, 'kwargs': kwargs}
+
+    def from_file(self, filename):
+        """ Return Tree object from matching parser for given file """
+        with open(filename) as f:
+            # Look for hint in first few lines of the file
+            for line in itertools.islice(f, 15):
+                for parser, param in self.parsers.items():
+                    m = param['hint'].search(line)
+                    if m:
+                        if 'function' in param:
+                            # Apply function to iterable f
+                            tree = parser.parse(param['function'](f),
+                                                **param['kwargs'])
+                        else:
+                            tree = parser.parse(f, **param['kwargs'])
+                        tree.source = filename  # Save source filename
+                        return tree
 
 
 def fixup(fd, width=132):
@@ -143,7 +208,7 @@ def _parse(lines, context, indent=1, eob=None):
             level -= 1
             c_stack.pop()
             r_stack.pop()
-        # Make list from single item
+        # Last item on stack is the current dissector, which should be a list
         if not isinstance(c_stack[-1], list):
             c_stack[-1] = [c_stack[-1]]
         # Iterate over list of dissectors
@@ -215,8 +280,8 @@ def _action(method, value):
         return _cidr(value)
     elif method == 'expand_f':
         return _expand_f(value)
-    elif method == 'decrypt_type7':
-        return _decrypt_type7(value)
+    elif method == 'decrypt7':
+        return _decrypt7(value)
     elif method == 'bool':
         return not value.startswith('no ')
     else:
@@ -254,7 +319,7 @@ def _cidr(string):
     except ValueError:
         return string
 
-def _decrypt_type7(string):
+def _decrypt7(string):
     """ Decrypt cisco type 7 passwords """
     m = re.search('(^[0-9A-Fa-f]{2})([0-9A-Fa-f]+)', string)
     if not m:

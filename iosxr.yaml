@@ -1,0 +1,155 @@
+- match: vrf (\S+)
+  parent: vrf
+  child:
+  - match: description (?P<description>.*)
+  - match: address-family (\S+)
+    child:
+    - match: import route-target
+      name: route-target
+      child:
+        match: (?P<import>.*)
+        actionall: list
+    - match: export route-target
+      name: route-target
+      child:
+        match: (?P<export>.*)
+        actionall: list
+- match: dhcp ipv4
+  name: dhcp
+  child:
+  - match: profile (\S+) relay
+    parent: profile
+    child:
+      match: helper-address vrf (\S+) (?P<address>\S+)
+      parent: vrf
+      actionall: list
+  - match: interface (\S+) relay profile (?P<profile>\S+)
+    parent: interface
+- match: interface (\S+) ?(?P<mode>l2transport)?
+  parent: interface
+  child:
+  - match: description (?P<description>.*)
+  - match: encapsulation (?P<dot1q>untagged)
+  - match: encapsulation dot1q (?P<dot1q>\d+)$
+  - match: encapsulation dot1q (?P<dot1q>\d+) second-dot1q (?P<second_dot1q>\d+)
+  - match: mtu (?P<mtu>\d+)
+  - match: service-policy input (?P<input>\S+)
+    parent: policy
+  - match: service-policy output (?P<output>\S+)
+    parent: policy
+  - match: bundle id (?P<id>\d+) mode (?P<mode>\S+)
+    parent: bundle
+  - match: mlacp iccp-group (?P<iccp_group>\d+)
+  - match: vrf (?P<vrf>\S+)
+  - match: ipv4 address (?P<ipv4>.*)
+    actionall: cidr
+  - match: ipv4 access-group (?P<ingress>\S+) ingress
+    parent: ipv4_acl
+  - match: ipv4 access-group (?P<egress>\S+) egress
+    parent: ipv4_acl
+  - match: shutdown
+    name: admin_state
+  - match: ipv4 helper-address vrf (\S+) (?P<address>\S+)
+    parent: ipv4_helper_vrf
+    actionall: list
+  - match: ipv4 directed-broadcast
+    name: ipv4_features
+    value: directed-broadcast
+    action: list
+  - match: proxy-arp
+    name: ipv4_features
+    action: list
+- match: evpn
+  child:
+    match: interface (\S+)
+    parent: interface
+    child:
+      match: ethernet-segment
+      child:
+        match: identifier type (?P<type>\d) (?P<esi>\S+)
+- match: l2vpn
+  child:
+  - match: redundancy
+    child:
+      match: iccp group (\d+)
+      parent: iccp_group
+      child:
+        match: interface (?P<interface>\S+)
+  - match: bridge group (\S+)
+    parent: bridge_group
+    child:
+      match: bridge-domain (\S+)
+      parent: bridge_domain
+      child:
+      - match: description (?P<description>.*)
+      - match: storm-control unknown-unicast pps (?P<uucast>\d+)
+        parent: storm_control
+      - match: storm-control multicast pps (?P<mcast>\d+)
+        parent: storm_control
+      - match: storm-control broadcast pps (?P<bcast>\d+)
+        parent: storm_control
+      - match: mac
+        child:
+        - match: aging
+          child:
+            match: time (?P<time>\d+)
+        - match: secure
+          child:
+            match: logging
+            name: logging
+            value: true
+      - match: igmp snooping profile (?P<igmp>\S+)
+      - match: interface (\S+)
+        parent: interface
+        child:
+          match: split-horizon group
+          name: split_horizon_group
+          value: 2
+      - match: routed interface (?P<routed_interface>\S+)
+      - match: evi (?P<evi>\d+)
+- match: router static
+  name: static
+  child:
+    match: vrf (\S+)
+    parent: vrf
+    child:
+      match: address-family (\S+)
+      child:
+        match: (\S+) (?P<nexthop>\S+)
+- match: router bgp (?P<local_as>\d+)
+  name: bgp
+  child:
+    match: vrf (\S+)
+    parent: vrf
+    child:
+    - match: default-information originate
+      name: default_originate
+      value: true
+    - match: address-family (\S+)
+      child:
+        match: redistribute (\S+)
+        name: redistribute
+        action: list
+- match: router hsrp
+  name: hsrp
+  child:
+    match: interface (\S+)
+    parent: interface
+    child:
+      match: address-family (\S+)
+      child:
+        match: 'hsrp (\d+)(?: version (?P<version>\d))?'
+        child:
+        - match: address (?P<address>\S+)$
+        - match: address (?P<secondary>\S+) secondary
+          actionall: list
+- match: router pim
+  name: pim
+  child:
+    match: vrf (\S+)
+    parent: vrf
+    child:
+      match: address-family (\S+)
+      child:
+        match: interface (\S+)
+        name: interface

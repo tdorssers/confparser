@@ -1,0 +1,80 @@
+- match: vrf context (\S+)
+  parent: vrf
+  child:
+  - match: description (?P<description>.*)
+  - match: ip route (\S+) (?P<nexthop>\S+)
+    parent: route
+  - match: rd (?P<rd>\S+)
+  - match: address-family (\S+)
+    child:
+    - match: route-target export (?P<export>\S+)
+    - match: route-target import (?P<import>\S+)
+- match: vlan (\S+)
+  parent: vlan
+  action: expand
+  child:
+    match: name (?P<name>.*)
+- match: interface (\S+)
+  parent: interface
+  child:
+  - match: description (?P<description>.*)
+  - match: (?:no )?switchport$
+    name: switchport
+    action: bool
+  - match: switchport mode (?P<mode>\S+)
+  - match: switchport trunk allowed vlan (?!add)(.*)
+    name: allowed_vlan
+    action: expand
+  - match: switchport trunk allowed vlan add (.*)
+    name: allowed_vlan
+    action: expand
+  - match: switchport trunk native vlan (?P<native_vlan>\d+)
+  - match: switchport access vlan (?P<access_vlan>\d+)
+  - match: channel-group (?P<id>\d+) mode (?P<mode>\S+)
+    parent: channel
+  - match: vpc (?P<vpc>\S+)
+  - match: fex associate (?P<fex>\d+)
+  - match: spanning-tree port type (?P<stp_port_type>.*)
+  - match: speed (?P<speed>\d+)
+  - match: duplex (?P<duplex>\S+)
+  - match: encapsulation dot1q (?P<dot1q>\d+)
+  - match: ip address (?P<ipv4>\S+)
+  - match: vrf member (?P<vrf>\S+)
+  - match: (?:no )?ip redirects
+    name: ipv4_redirects
+    action: bool
+  - match: hsrp (\d+)
+    name: hsrp
+    child:
+    - match: ip (?P<ipv4>\S+)
+    - match: priority (?P<priority>\d+)
+    - match: preempt$
+    - match: preempt delay minimum (?P<delay_min>\d+)
+      parent: preempt
+    - match: timers (?P<hello>\d+) (?P<dead>\d+)
+      parent: timers
+  - match: ip directed-broadcast ?(?P<ipv4_dir_bcast>.*)
+  - match: ip dhcp relay address (\S+)
+    action: list
+    name: ipv4_dhcp_relay
+  - match: ip pim (?P<ip_pim>.*-mode)
+  - match: mtu (?P<mtu>\d+)
+  - match: ip access-group (?P<ingress>\S+) in
+    parent: ipv4_acl
+  - match: ip access-group (?P<egress>\S+) out
+    parent: ipv4_acl
+  - match: (?:no )?shutdown
+    name: shutdown
+    action: bool
+  - match: (?:no )?cdp enable
+    name: cdp_enable
+    action: bool
+  - match: ip router ospf (\S+) area (?P<area>\S+)
+    parent: ospf
+  - match: ip ospf network (?P<network>\S+)
+    parent: ospf
+  - match: ip ospf authentication (?P<auth>\S+)
+  - match: (?:no )?ip ospf passive-interface
+    name: passive
+    action: bool
+    parent: ospf

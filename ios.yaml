@@ -1,0 +1,172 @@
+- match: hostname (?P<hostname>\S+)
+- match: ip domain name (?P<domain>\S+)
+- match: ip name-server (?P<name_server>\S+)
+- match: username (\S+).*? password 7 (?P<password>\S+)
+  parent: username
+  actionall: decrypt7
+- match: vrf definition (\S+)
+  parent: vrf
+  child:
+  - match: description (?P<description>.*)
+  - match: rd (?P<rd>\S+)
+  - match: address-family (\S+)
+    child:
+    - match: route-target export (?P<export>\S+)
+    - match: route-target import (?P<import>\S+)
+- match: vlan ([0-9-,]+)
+  parent: vlan
+  action: expand
+  child:
+    match: name (?P<name>\S+)
+- match: interface (\S+)
+  parent: interface
+  child:
+  - match: description (?P<description>.*)
+  - match: (?:no )?switchport$
+    name: switchport
+    action: bool
+  - match: encapsulation dot1Q (?P<dot1q>\d+)
+  - match: (?:ip )?vrf forwarding (?P<vrf>\S+)
+  - match: ip address (?!.*secondary)(?P<ipv4>.*)
+    actionall: cidr
+  - match: ip address (?P<ipv4_secondary>.*) secondary
+    actionall: cidr
+  - match: (?:no )?ip redirects
+    name: ipv4_redirects
+    action: bool
+  - match: (?:no )?ip proxy-arp
+    name: ipv4_proxy_arp
+    action: bool
+  - match: (?:no )?ip unreachables
+    name: ipv4_unreachables
+    action: bool
+  - match: ip helper-address (\S+)
+    action: list
+    name: ipv4_helper
+  - match: standby (\d+) ip (?P<ip>\S+)
+    parent: standby
+  - match: standby (\d+) priority (?P<priority>\d+)
+    parent: standby
+  - match: standby (\d+) preempt(?P<preempt>.*)$
+    parent: standby
+  - match: standby (\d+) preempt delay minimum (?P<preempt_delay_min>\d+)
+    parent: standby
+  - match: standby (\d+) timers (?P<hello>\d+) (?P<dead>\d+)
+    parent: standby
+  - match: standby (\d+) authentication md5 key-string 7 (?P<auth_md5>\S+)
+    parent: standby
+    actionall: decrypt7
+  - match: ip pim (?P<ip_pim>.*-mode)
+  - match: ip access-group (?P<ingress>\S+) in
+    parent: ipv4_acl
+  - match: ip access-group (?P<egress>\S+) out
+    parent: ipv4_acl
+  - match: ip directed-broadcast ?(?P<ipv4_dir_bcast>.*)
+  - match: ipv6 address (?P<ipv6>\S+)
+  - match: ipv6 nd (?P<ipv6_nd>.*)
+  - match: (?:no )?ipv6 redirects
+    name: ipv6_redirects
+    action: bool
+  - match: ipv6 traffic-filter (?P<ingress>\S+) in
+    parent: ipv6_acl
+  - match: ipv6 traffic-filter (?P<egress>\S+) out
+    parent: ipv6_acl
+  - match: standby (\d+) ipv6 (?P<ipv6>\S+)
+    parent: standby
+  - match: bfd interval (?P<interval>\d+) min_rx (?P<min_rx>\d+) multiplier (?P<multiplier>\d+)
+    parent: bfd
+  - match: (?:no )?shutdown
+    name: shutdown
+    action: bool
+  - match: (?:no )?cdp enable
+    name: cdp_enable
+    action: bool
+  - match: mtu (?P<mtu>\d+)
+  - match: carrier-delay (?P<carrier_delay>\d+)
+  - match: switchport trunk allowed vlan (?!add)(\S+)
+    name: allowed_vlan
+    action: expand
+  - match: switchport trunk allowed vlan add (\S+)
+    name: allowed_vlan
+    action: expand
+  - match: switchport trunk native vlan (?P<native_vlan>\d+)
+  - match: switchport mode (?P<mode>\S+)
+  - match: switchport access vlan (?P<access_vlan>\d+)
+  - match: channel-group (?P<id>\d+) mode (?P<mode>\S+)
+    parent: channel
+  - match: logging event (\S+)
+    action: list
+    name: logging
+  - match: cts manual
+    child:
+      match: policy static sgt (\d+)
+      name: sgt
+  - match: power inline (?P<power_inline>\S+)
+  - match: speed (?P<speed>.*)
+    actionall: split
+  - match: spanning-tree bpdufilter (?P<stp_bpdufilter>.*)
+  - match: spanning-tree bpduguard (?P<stp_bpduguard>.*)
+  - match: spanning-tree portfast$
+    name: stp_portfast
+    value: enable
+  - match: spanning-tree portfast (?P<stp_portfast>trunk)
+  - match: service-policy input (?P<ingress>\S+) in
+    parent: service_policy
+  - match: service-policy output (?P<egress>\S+)
+    parent: service_policy
+- match: router bgp (?P<local_as>\d+)
+  name: bgp
+  child:
+  - match: bgp router-id (?P<router_id>\S+)
+  - match: neighbor (\S+) description (?P<description>.*)
+    parent: neighbor
+  - match: neighbor (\S+) remote-as (?P<remote_as>.*)
+    parent: neighbor
+  - match: neighbor (\S+) inherit peer-session (?P<peer_session>.*)
+    parent: neighbor
+  - match: template peer-session (\S+)
+    parent: peer_session
+    child:
+    - match: remote-as (?P<remote_as>.*)
+    - match: password 7 (?P<password>\S+)
+      actionall: decrypt7
+  - match: address-family ipv4$
+    name: af_ipv4
+    child:
+    - match: redistribute (\S+)
+      name: redistribute
+    - match: default-information originate
+      name: default_originate
+      value: true
+  - match: address-family ipv4 vrf (\S+)
+    parent: af_ipv4_vrf
+    child:
+    - match: network (?P<network>.*)
+    - match: neighbor (\S+) description (?P<description>.*)
+      parent: neighbor
+    - match: neighbor (\S+) remote-as (?P<remote_as>.*)
+      parent: neighbor
+    - match: redistribute (\S+)
+      name: redistribute
+  - match: address-family ipv6 vrf (\S+)
+    parent: af_ipv4_vrf
+    child:
+    - match: network (?P<network>.*)
+    - match: neighbor (\S+) description (?P<description>.*)
+      parent: neighbor
+    - match: neighbor (\S+) remote-as (?P<remote_as>.*)
+      parent: neighbor
+    - match: redistribute (\S+)
+      name: redistribute
+#- match: ip route (?!vrf)(\S+ \S+) (?P<nexthop>\S+)
+#  parent: route
+#  action: cidr
+#- match: ip route vrf (?P<vrf>\S+) (\S+ \S+) (?P<nexthop>\S+)
+#  parent: route
+#  action: cidr
+- match: ip route (?!vrf)(?P<dest>\S+) (?P<mask>\S+) (?P<nexthop>\S+)
+  parent: route
+  key: uuid
+- match: ip route vrf (?P<vrf>\S+) (?P<dest>\S+) (?P<mask>\S+) (?P<nexthop>\S+)
+  parent: route
+  key: uuid
