@@ -136,7 +136,7 @@ Output:
 
 ## Advanced usage
 
-The following example loads dissectors from file and registers them to the AutoDissector with hints. All text files in the current directory are parsed using all available processor cores and written to a JSON formatted file.
+The following example loads dissectors from file and registers them to the AutoDissector with hints. All text files in the current directory are parsed using all available processor cores and written to a JSON formatted file. Note that Python 3.3+ is required to use Pool.map with instance methods.
 
 ```python
 import confparser
@@ -144,14 +144,15 @@ import multiprocessing
 import glob
 import json
 
-auto = confparser.AutoDissector()
-auto.register(confparser.Dissector.from_file('ios.yaml'), 'version \d+.\d+$')
-auto.register(confparser.Dissector.from_file('nxos.yaml'), 'version \d+.\d+\(\d+\)', indent=2)
-auto.register(confparser.Dissector.from_file('iosxr.yaml'), '!! IOS XR Configuration')
-pool = multiprocessing.Pool()
-result = pool.map(auto.from_file, glob.glob('*.txt'), 1)
-with open('output.json', 'w') as f:
-    json.dump({tree.source:tree for tree in result if tree}, f, indent=4)
+if __name__ == '__main__':
+    auto = confparser.AutoDissector()
+    auto.register(confparser.Dissector.from_file('ios.yaml'), 'version \d+.\d+$')
+    auto.register(confparser.Dissector.from_file('nxos.yaml'), 'version \d+.\d+\(\d+\)', indent=2)
+    auto.register(confparser.Dissector.from_file('iosxr.yaml'), '!! IOS XR Configuration')
+    pool = multiprocessing.Pool()
+    result = pool.map(auto.from_file, glob.glob('*.txt'), 1)
+    with open('output.json', 'w') as f:
+        json.dump({tree.source:tree for tree in result if tree}, f, indent=4)
 ```
 
 The AutoDissector sets *Tree.source* to the filename of the parsed file and is used as key in the dictionary comprehention.

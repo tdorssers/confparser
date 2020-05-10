@@ -1,3 +1,6 @@
+- match: hostname (?P<hostname>\S+)
+- match: ip domain name (?P<domain>\S+)
+- match: ip name-server (?P<name_server>\S+)
 - match: vrf context (\S+)
   parent: vrf
   child:

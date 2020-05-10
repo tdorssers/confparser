@@ -135,7 +135,6 @@ class Dissector(object):
             tree.parser = self
             return tree
 
-
 class AutoDissector(object):
     """ Handles automatic selection of parsers based on hints """
 
@@ -173,18 +172,6 @@ class AutoDissector(object):
                         tree.source = filename  # Save source filename
                         return tree
 
-
-def fixup(fd, width=132):
-    """ Generator that filters empty lines and concatenates wrapped lines """
-    previous = ''
-    for line in fd:
-        line = line.rstrip()
-        if line:
-            if len(line) == width:
-                previous += line
-            else:
-                yield previous + line
-                previous = ''
 
 def _parse(lines, context, indent=1, eob=None):
     """ Parse block style document through given nested dict of dissectors """

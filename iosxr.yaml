@@ -1,3 +1,5 @@
+- match: hostname (?P<hostname>\S+)
+- match: domain name (?P<domain>\S+)
 - match: vrf (\S+)
   parent: vrf
   child:
@@ -25,6 +27,17 @@
       actionall: list
   - match: interface (\S+) relay profile (?P<profile>\S+)
     parent: interface
+- match: redundancy
+  child:
+    match: iccp
+    child:
+      match: group (\d+)
+      parent: group
+      child:
+      - match: mlacp node (?P<node>\d)
+      - match: member
+        child:
+          match: neighbor (?P<neighbor>\S+)
 - match: interface (\S+) ?(?P<mode>l2transport)?
   parent: interface
   child:
@@ -47,8 +60,12 @@
     parent: ipv4_acl
   - match: ipv4 access-group (?P<egress>\S+) egress
     parent: ipv4_acl
-  - match: shutdown
-    name: admin_state
+  - match: (?:no )?shutdown
+    name: shutdown
+    action: bool
+  - match: (?:no )?cdp enable
+    name: cdp_enable
+    action: bool
   - match: ipv4 helper-address vrf (\S+) (?P<address>\S+)
     parent: ipv4_helper_vrf
     actionall: list
@@ -114,22 +131,32 @@
     parent: vrf
     child:
       match: address-family (\S+)
+      parent: af
       child:
         match: (\S+) (?P<nexthop>\S+)
 - match: router bgp (?P<local_as>\d+)
   name: bgp
   child:
-    match: vrf (\S+)
+  - match: neighbor (\S+)
+    parent: neighbor
+    child:
+      match: description (?P<description>.*)
+  - match: vrf (\S+)
     parent: vrf
     child:
     - match: default-information originate
       name: default_originate
       value: true
     - match: address-family (\S+)
+      parent: af
       child:
         match: redistribute (\S+)
         name: redistribute
         action: list
+    - match: neighbor (\S+)
+      parent: neighbor
+      child:
+        match: description (?P<description>.*)
 - match: router hsrp
   name: hsrp
   child:
@@ -137,8 +164,10 @@
     parent: interface
     child:
       match: address-family (\S+)
+      parent: af
       child:
         match: 'hsrp (\d+)(?: version (?P<version>\d))?'
+        parent: hsrp
         child:
         - match: address (?P<address>\S+)$
         - match: address (?P<secondary>\S+) secondary
@@ -150,6 +179,7 @@
     parent: vrf
     child:
       match: address-family (\S+)
+      parent: af
       child:
         match: interface (\S+)
         name: interface
