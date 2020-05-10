@@ -74,9 +74,6 @@ Return a new Tree object from matching parser for specified file *filename*
 `confparser.Tree(iterable, **kwarg)`
 Subclass of *dict*. Return a new Tree object initialized from an optional positional argument and a possibly empty set of keyword arguments.
 
-`confparser.fixup(fd, width=132)`
-Generator that filters empty lines from given open file *fd* and concatenates wrapped lines.
-
 ## Usage
 
 Basic usage of the module:
