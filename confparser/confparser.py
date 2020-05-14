@@ -1,5 +1,6 @@
 """
-Parse a block style document into a dict using dissectors
+Parse a block style document, such as Cisco configuration files, into a dict
+using dissectors.
 
 A dissector is a YAML formatted nested list of dicts with any of these keys: 
 match    : A regular expression to match at the beginning of a line. The first
@@ -23,6 +24,7 @@ actionall: Perform specified action on all named capture groups.
 Supported actions are:
 expand   : Convert number ranges with hyphens and commas into list of numbers
 expand_f : Convert Foundry-style port ranges into list of ports
+expand_h : Convert Huawei-style port ranges into list of ports
 split    : Split string into list of words
 list     : Convert string to list unconditionally
 cidr     : Convert netmask to prefix length in IP address string
@@ -54,17 +56,18 @@ import itertools
 
 
 class Tree(dict):
-    """ Autovivificious dictionary """
+    """ Autovivificious dictionary with parent property as tree stucture """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, parent=None):
         """ Initialize self """
-        self.parser = None
-        self.source = None
-        self.update(*args, **kwargs)
+        self.parent = parent
+        if parent is None:
+            self.parser = None
+            self.source = None
 
     def __missing__(self, key):
         """ Implement self[key] when key is not in the dictionary """
-        value = self[key] = type(self)()
+        value = self[key] = type(self)(self)
         return value
 
     def __str__(self):
@@ -163,6 +166,7 @@ class AutoDissector(object):
                 for parser, param in self.parsers.items():
                     m = param['hint'].search(line)
                     if m:
+                        f.seek(0)
                         if 'function' in param:
                             # Apply function to iterable f
                             tree = parser.parse(param['function'](f),
@@ -271,6 +275,8 @@ def _action(method, value):
         return _decrypt7(value)
     elif method == 'bool':
         return not value.startswith('no ')
+    elif method == 'expand_h':
+        return _expand_h(value)
     else:
         return value
 
@@ -297,6 +303,18 @@ def _expand_f(string):
                 result.append(m.group(1) + str(port))
         else:
             result.append(port_range)  # single port
+    return result
+
+def _expand_h(string):
+    """ Convert Huawei-style port ranges into list of ports """
+    result = []
+    for element in re.split('(?<!to) (?!to)', string):
+        m = re.match('(\d+) to (\d+)', element)
+        if m:
+            for num in range(int(m.group(1)), int(m.group(2)) + 1):
+                result.append(str(num))
+        else:
+            result.append(element)
     return result
 
 def _cidr(string):

@@ -24,6 +24,7 @@ Supported actions are:
 | --- | --- |
 | expand | Convert number ranges with hyphens and commas into list of numbers |
 | expand_f | Convert Foundry-style port ranges into list of ports |
+| expand_h | Convert Huawei-style port ranges into list of ports |
 | split | Split string into list of words |
 | list | Convert string to list unconditionally |
 | cidr | Convert netmask to prefix length in IP address string |
@@ -67,12 +68,13 @@ Register Dissector object with hint regex and parser keyword arguments.
 Register Dissector object with hint regex and parser keyword arguments with function to apply to the parser iteratable, like the [map()](https://docs.python.org/3/library/functions.html#map) built-in function.
 
 `confparser.AutoDissector.from_file(filename)`
-Return a new Tree object from matching parser for specified file *filename*
+Return a new Tree object from matching parser for specified file *filename*.
 
-`confparser.Tree(**kwarg)`
-`confparser.Tree(mapping, **kwarg)`
-`confparser.Tree(iterable, **kwarg)`
-Subclass of *dict*. Return a new Tree object initialized from an optional positional argument and a possibly empty set of keyword arguments.
+`confparser.Tree(parent=None)`
+Subclass of *dict*. Return a new Tree object.
+
+`confparser.merge_retain(other)`
+Update Tree with dict *other* and concatenate values in lists of existing keys.
 
 ## Usage
 

@@ -76,6 +76,10 @@
   - match: proxy-arp
     name: ipv4_features
     action: list
+  - match: nv
+    child:
+      match: satellite-fabric-link satellite (\d+)
+      name: satellite
 - match: evpn
   child:
     match: interface (\S+)
