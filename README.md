@@ -73,7 +73,7 @@ Return a new Tree object from matching parser for specified file *filename*.
 `confparser.Tree(parent=None)`
 Subclass of *dict*. Return a new Tree object.
 
-`confparser.merge_retain(other)`
+`confparser.Tree.merge_retain(other)`
 Update Tree with dict *other* and concatenate values in lists of existing keys.
 
 ## Usage
