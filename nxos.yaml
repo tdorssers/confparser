@@ -12,9 +12,18 @@
     child:
     - match: route-target export (?P<export>\S+)
     - match: route-target import (?P<import>\S+)
-- match: vlan (\S+)
+- match: vlan configuration (\S+)
+  parent: vlan_conf
+  action: expand
+  child:
+    match: (?:no )?ip igmp snooping
+    name: igmp_snoop
+    action: bool
+- match: vlan ([0-9-,]+)
   parent: vlan
   action: expand
+- match: vlan (\d+)$
+  parent: vlan
   child:
     match: name (?P<name>.*)
 - match: interface (\S+)

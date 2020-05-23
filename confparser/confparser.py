@@ -1,6 +1,6 @@
 """
-Parse a block style document, such as Cisco configuration files, into a dict
-using dissectors.
+Parse a block style document, such as Cisco configuration files, into a JSON
+formattable structure using dissectors.
 
 A dissector is a YAML formatted nested list of dicts with any of these keys: 
 match    : A regular expression to match at the beginning of a line. The first
@@ -37,12 +37,12 @@ Default parameters allow parsing of most configuration files.
 To parse NXOS use indent=2
 To parse VSP use indent=0, eob='exit'
 
-The dissector returns a Tree object which is a nested dict with a parser
-property that references the dissector used. A dissector can be created from a
-string or a file and can parse an iterable or a file. Multiple dissectors can
-be registered to the AutoDissector which uses hints to match a dissector to a
-file. A hint is a regular expression that is unique to the first 15 lines of a
-file.
+The Dissector class returns a Tree object which is a nested dict with attributes
+that reference the dissector and source file used. A dissector can be created
+from a string or a file and can parse an iterable, a string or a file. Multiple
+dissectors can be registered to the AutoDissector which uses hints to match a
+dissector to a file. A hint is a regular expression that is unique to the first
+15 lines of a file.
 """
 
 # Author: Tim Dorssers
@@ -116,7 +116,6 @@ class Dissector(object):
         """ Alternate constructor that loads a dissector from file """
         with open(filename) as f:
             buf = f.read()
-        # Create instance using filename as name
         return cls(buf, **kwargs)
 
     def parse(self, lines, **kwargs):
@@ -221,7 +220,7 @@ def _parse(lines, context, indent=1, eob=None):
                 key = m.group(next(x for x in itertools.count(1)
                                    if x not in m.re.groupindex.values()))
             if 'parent' in item:
-                # Insert specified parent dict and retain reference
+                # Insert specified parent Tree object and retain reference
                 p_result = r_stack[-1][item['parent']]
             else:
                 p_result = r_stack[-1]
@@ -235,13 +234,15 @@ def _parse(lines, context, indent=1, eob=None):
                 # Override key by name if specified and apply group action
                 key = _action(item.get('action'), item.get('name', key))
                 key = [key] if not isinstance(key, list) else key
-                # Push branch references to stack
+                # Push branch reference to stack
                 r_stack.append(p_result[key[0]])
                 c_stack.append(item['child'])
                 level += 1
-                for k in key:
-                    # Add to dict using named groups as value
-                    p_result[k].merge_retain(named_groups)
+                # Add to Tree using named groups as value
+                p_result[key[0]].merge_retain(named_groups)
+                # Make references to first stacked key in case of multiple keys
+                for k in key[1:]:
+                    p_result[k] = p_result[key[0]]
             elif 'name' in item:
                 # Use 'key' as value or specified value and apply group action
                 value = _action(item.get('action'), item.get('value', key))
@@ -249,11 +250,11 @@ def _parse(lines, context, indent=1, eob=None):
                 named_groups.update({item['name']: value})
                 p_result.merge_retain(named_groups)
             elif key:
-                # Apply action to key if specified otherwise make list
+                # Apply action to key if specified and make list
                 key = _action(item.get('action'), key)
                 key = [key] if not isinstance(key, list) else key
                 for k in key:
-                    # Add to dict using named groups as value
+                    # Add to Tree using named groups as value
                     p_result[k].merge_retain(named_groups)
             else:
                 p_result.merge_retain(named_groups)

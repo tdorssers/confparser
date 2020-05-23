@@ -53,6 +53,8 @@
   - match: bundle id (?P<id>\d+) mode (?P<mode>\S+)
     parent: bundle
   - match: mlacp iccp-group (?P<iccp_group>\d+)
+  - match: lacp system mac (?P<lacp_sys_mac>\S+)
+  - match: mac-address (?P<mac>\S+)
   - match: vrf (?P<vrf>\S+)
   - match: ipv4 address (?P<ipv4>.*)
     actionall: cidr
@@ -96,6 +98,7 @@
       parent: iccp_group
       child:
         match: interface (?P<interface>\S+)
+        actionall: list
   - match: bridge group (\S+)
     parent: bridge_group
     child:
@@ -126,6 +129,7 @@
           match: split-horizon group
           name: split_horizon_group
           value: 2
+      - match: vfi (?P<vfi>\S+)
       - match: routed interface (?P<routed_interface>\S+)
       - match: evi (?P<evi>\d+)
 - match: router static
@@ -187,3 +191,4 @@
       child:
         match: interface (\S+)
         name: interface
+        action: list

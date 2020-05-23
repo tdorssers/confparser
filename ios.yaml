@@ -13,6 +13,18 @@
     child:
     - match: route-target export (?P<export>\S+)
     - match: route-target import (?P<import>\S+)
+#- match: no ip igmp snooping vlan (?P<igmp_snoop_disable>\d+)
+#  action: list
+- match: (?P<igmp_snoop>(?:no )?ip igmp snooping vlan) (\d+)
+  parent: vlan_conf
+  actionall: bool
+- match: vlan configuration (\S+)
+  parent: vlan_conf
+  action: expand
+  child:
+    search: (?:no )?ip igmp snooping
+    name: igmp_snoop
+    action: bool
 - match: vlan ([0-9-,]+)
   parent: vlan
   action: expand
@@ -104,6 +116,7 @@
   - match: power inline (?P<power_inline>\S+)
   - match: speed (?P<speed>.*)
     actionall: split
+  - match: duplex (?P<duplex>.*)
   - match: spanning-tree bpdufilter (?P<stp_bpdufilter>.*)
   - match: spanning-tree bpduguard (?P<stp_bpduguard>.*)
   - match: spanning-tree portfast$
