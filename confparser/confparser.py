@@ -140,9 +140,10 @@ class Dissector(object):
 class AutoDissector(object):
     """ Handles automatic selection of parsers based on hints """
 
-    def __init__(self):
+    def __init__(self, raise_no_match=True):
         """ Initialize self """
         self.parsers = {}
+        self.raise_no_match = raise_no_match
 
     def register(self, dissector, hint, **kwargs):
         """ Register dissector object with hint regex and parser arguments """
@@ -152,10 +153,8 @@ class AutoDissector(object):
 
     def register_map(self, dissector, function, hint, **kwargs):
         """ Register with function to apply to the parser iteratable """
-        if not isinstance(dissector, Dissector):
-            raise TypeError('Expected a dissector object')
-        self.parsers[dissector] = {'hint': re.compile(hint),
-                                   'function': function, 'kwargs': kwargs}
+        self.register(dissector, hint, **kwargs)
+        self.parsers[dissector]['function'] = function
 
     def from_file(self, filename):
         """ Return Tree object from matching parser for given file """
@@ -174,6 +173,8 @@ class AutoDissector(object):
                             tree = parser.parse(f, **param['kwargs'])
                         tree.source = filename  # Save source filename
                         return tree
+        if self.raise_no_match:
+            raise ValueError('None of the hints matched file %s' % filename)
 
 
 def _parse(lines, context, indent=1, eob=None):

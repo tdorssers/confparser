@@ -58,8 +58,8 @@ Return a new Tree object that contains the parsed string *string*.
 `confparser.Dissector.parse_file(filepath, indent=1, eob=None)`
 Return a new Tree object that contains the parsed file *filepath* contents.
 
-`confparser.AutoDissector()`
-Return a new AutoDissector object that handles automatic selection of parsers based on hints.
+`confparser.AutoDissector(raise_no_match=True)`
+Return a new AutoDissector object that handles automatic selection of parsers based on hints. Set *raise_no_match* to False to prevent *AutoDissector.from_file* from raising ValueError when no matching parser is found.
 
 `confparser.AutoDissector.register(dissector, hint, **kwarg)`
 Register Dissector object with hint regex and parser keyword arguments.
@@ -68,7 +68,7 @@ Register Dissector object with hint regex and parser keyword arguments.
 Register Dissector object with hint regex and parser keyword arguments with function to apply to the parser iteratable, like the [map()](https://docs.python.org/3/library/functions.html#map) built-in function.
 
 `confparser.AutoDissector.from_file(filename)`
-Return a new Tree object from matching parser for specified file *filename*.
+Return a new Tree object from matching parser for specified file *filename*. Raises *ValueError* when no matching parser is found.
 
 `confparser.Tree(parent=None)`
 Subclass of *dict*. Return a new Tree object.
@@ -135,7 +135,16 @@ Output:
 
 ## Advanced usage
 
-The following example loads dissectors from file and registers them to the AutoDissector with hints. All text files in the current directory are parsed using all available processor cores and written to a JSON formatted file. Note that Python 3.3+ is required to use Pool.map with instance methods.
+The dissector can also be easily loaded from a file and a configuration file can be parsed directly without opening a file:
+
+```python
+import confparser
+
+dissector = confparser.Dissector.from_file('ios.yaml')
+print(dissector.parse_file('config.txt'))
+```
+
+The following example loads multiple dissectors from file and registers them to the AutoDissector with regex hints. All text files in the current directory are parsed using all available processor cores and the result is written to a JSON formatted file. Note that Python 3.3+ is required to use Pool.map with instance methods.
 
 ```python
 import confparser
