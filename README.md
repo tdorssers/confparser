@@ -141,10 +141,10 @@ The dissector can also be easily loaded from a file and a configuration file can
 import confparser
 
 dissector = confparser.Dissector.from_file('ios.yaml')
-print(dissector.parse_file('config.txt'))
+print(dissector.parse_file('sample.cfg'))
 ```
 
-The following example loads multiple dissectors from file and registers them to the AutoDissector with regex hints. All text files in the current directory are parsed using all available processor cores and the result is written to a JSON formatted file. Note that Python 3.3+ is required to use Pool.map with instance methods.
+The following example loads multiple dissectors from file and registers them to the AutoDissector with regex hints. All configuration files in the current directory are parsed using all available processor cores and the result is written to a JSON formatted file. Note that Python 3.3+ is required to use Pool.map with instance methods.
 
 ```python
 import confparser
@@ -158,7 +158,7 @@ if __name__ == '__main__':
     auto.register(confparser.Dissector.from_file('nxos.yaml'), 'version \d+.\d+\(\d+\)', indent=2)
     auto.register(confparser.Dissector.from_file('iosxr.yaml'), '!! IOS XR Configuration')
     pool = multiprocessing.Pool()
-    result = pool.map(auto.from_file, glob.glob('*.txt'), 1)
+    result = pool.map(auto.from_file, glob.glob('*.cfg'), 1)
     with open('output.json', 'w') as f:
         json.dump({tree.source:tree for tree in result if tree}, f, indent=4)
 ```
@@ -167,7 +167,7 @@ The AutoDissector sets *Tree.source* to the filename of the parsed file and is u
 
 ## Installation
 
-Make sure you have [Python](https://www.python.org/) 2.7+ or 3.2+ installed on your system. Install [ipaddress](https://pypi.org/project/ipaddress/) if you are using a 2.7 or 3.2 version. Install [PyYAML](https://pypi.org/project/PyYAML/) using [PIP](https://pypi.org/project/pip/) on Linux or macOS:
+Make sure you have [Python](https://www.python.org/) 2.7+ or 3.2+ installed on your system. Install [ipaddress](https://pypi.org/project/ipaddress/) if you are using a 2.7 or 3.2 version. Install [PyYAML](https://pypi.org/project/PyYAML/) as this module depends on it using [PIP](https://pypi.org/project/pip/) on Linux or macOS:
 
 `pip install pyyaml`
 
@@ -179,4 +179,4 @@ or on Ubuntu as follows:
 
 `sudo apt-get install python-yaml`
 
-Just copy directory *confparser* to your machine.
+To start using this module and run the usage examples above, just copy the directory *confparser* and the files *ios.yaml*, *nxos.yaml*, *iosxr.yaml* and *sample.cfg* to your machine.
