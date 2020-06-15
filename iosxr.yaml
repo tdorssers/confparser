@@ -1,5 +1,8 @@
 - match: hostname (?P<hostname>\S+)
 - match: domain name (?P<domain>\S+)
+- match: (?:no )?cdp
+  name: cdp_run
+  action: bool
 - match: vrf (\S+)
   parent: vrf
   child:
@@ -65,7 +68,7 @@
   - match: (?:no )?shutdown
     name: shutdown
     action: bool
-  - match: (?:no )?cdp enable
+  - match: (?:no )?cdp
     name: cdp_enable
     action: bool
   - match: ipv4 helper-address vrf (\S+) (?P<address>\S+)
@@ -180,6 +183,9 @@
         - match: address (?P<address>\S+)$
         - match: address (?P<secondary>\S+) secondary
           actionall: list
+- match: (?:no )?lldp
+  name: lldp_run
+  action: bool
 - match: router pim
   name: pim
   child:

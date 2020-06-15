@@ -30,6 +30,12 @@
   action: expand
   child:
     match: name (?P<name>\S+)
+- match: (?:no )?cdp run
+  name: cdp_run
+  action: bool
+- match: (?:no )?lldp run
+  name: lldp_run
+  action: bool
 - match: interface (\S+)
   parent: interface
   child:
@@ -92,6 +98,12 @@
     action: bool
   - match: (?:no )?cdp enable
     name: cdp_enable
+    action: bool
+  - match: (?:no )?lldp transmit
+    name: lldp_tx
+    action: bool
+  - match: (?:no )?lldp receive
+    name: lldp_rx
     action: bool
   - match: mtu (?P<mtu>\d+)
   - match: carrier-delay (?P<carrier_delay>\d+)
