@@ -19,6 +19,18 @@
       child:
         match: (?P<export>.*)
         actionall: list
+- match: arp redundancy
+  name: arp_sync
+  child:
+    match: group (\d+)
+    parent: group
+    child:
+    - match: peer (?P<peer>\S+)
+    - match: source-interface (?P<source>\S+)
+    - match: interface-list
+      name: interface
+      child:
+        match: interface (\S+) id (?P<id>\d+)
 - match: dhcp ipv4
   name: dhcp
   child:
@@ -85,6 +97,7 @@
     child:
       match: satellite-fabric-link satellite (\d+)
       name: satellite
+  - match: lacp period (?P<lacp_period>\S+)
 - match: evpn
   child:
     match: interface (\S+)
