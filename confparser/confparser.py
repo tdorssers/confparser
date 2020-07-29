@@ -17,8 +17,8 @@ value    : Specifies the value in case no capture groups are used. Only valid
 parent   : Forces insertion of a parent dict using specified key.
 key      : Force capture group with specified index as key or generate unique
            key by setting to uuid.
-action   : Perform specified action on first capture group. Not valid when
-           'child' is used.
+action   : Perform specified action on first unnamed capture group or on whole
+           match if no capture group specified. Not valid when 'child' is used.
 actionall: Perform specified action on all named capture groups.
 
 Supported actions are:
@@ -263,6 +263,8 @@ def _parse(lines, context, indent=1, eob=None):
 
 def _action(method, value):
     """ Run given method on value """
+    if value is None:
+        return
     if method == 'expand':
         return _expand(value)
     elif method == 'split':

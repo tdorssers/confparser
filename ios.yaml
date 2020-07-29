@@ -1,5 +1,5 @@
 - match: hostname (?P<hostname>\S+)
-- match: ip domain name (?P<domain>\S+)
+- match: ip domain[ -]name (?P<domain>\S+)
 - match: ip name-server (?P<name_server>\S+)
 - match: username (\S+).*? password 7 (?P<password>\S+)
   parent: username
@@ -13,8 +13,6 @@
     child:
     - match: route-target export (?P<export>\S+)
     - match: route-target import (?P<import>\S+)
-#- match: no ip igmp snooping vlan (?P<igmp_snoop_disable>\d+)
-#  action: list
 - match: (?P<igmp_snoop>(?:no )?ip igmp snooping vlan) (\d+)
   parent: vlan_conf
   actionall: bool

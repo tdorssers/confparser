@@ -53,7 +53,7 @@
       - match: member
         child:
           match: neighbor (?P<neighbor>\S+)
-- match: interface (\S+) ?(?P<mode>l2transport)?
+- match: interface (?!preconfigure)(\S+) ?(?P<mode>l2transport)?
   parent: interface
   child:
   - match: description (?P<description>.*)
@@ -113,7 +113,8 @@
       match: iccp group (\d+)
       parent: iccp_group
       child:
-        match: interface (?P<interface>\S+)
+      - match: multi-homing node-id (?P<node>\d)
+      - match: interface (?P<interface>\S+)
         actionall: list
   - match: bridge group (\S+)
     parent: bridge_group
@@ -187,15 +188,24 @@
     match: interface (\S+)
     parent: interface
     child:
-      match: address-family (\S+)
+    - match: hsrp bfd minimum-interval (?P<bfd_int>\d+)
+    - match: hsrp bfd multiplier (?P<bfd_mul>\d+)
+    - match: hsrp delay minimum (?P<min>\d+) reload (?P<reload>\d+)
+    - match: address-family (\S+)
       parent: af
       child:
         match: 'hsrp (\d+)(?: version (?P<version>\d))?'
         parent: hsrp
         child:
+        - match: timers (?P<hello>\d+) (?P<hold>\d+)
+        - match: 'preempt(?: delay (?P<delay>\d+))?'
+          name: preempt
+          value: true
+        - match: priority (?P<priority>\d+)
         - match: address (?P<address>\S+)$
         - match: address (?P<secondary>\S+) secondary
           actionall: list
+        - match: bfd fast-detect peer ipv[46] (?P<bfd_peer>\S+)
 - match: (?:no )?lldp
   name: lldp_run
   action: bool
@@ -208,6 +218,13 @@
       match: address-family (\S+)
       parent: af
       child:
-        match: interface (\S+)
-        name: interface
-        action: list
+      - match: dr-priority (?P<dr_priority>\d+)
+      - match: rp-address (?P<rp>\S+)
+      - match: interface (\S+)
+        parent: interface
+        child:
+        - match: bfd minimum-interval (?P<bfd_int>\d+)
+        - match: bfd multiplier (?P<bfd_mul>\d+)
+        - match: bfd fast-detect
+          name: bfd
+          action: bool
