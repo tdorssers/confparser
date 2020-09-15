@@ -1,3 +1,5 @@
+[![published](https://static.production.devnetcloud.com/codeexchange/assets/images/devnet-published.svg)](https://developer.cisco.com/codeexchange/github/repo/tdorssers/confparser)
+
 # confparser
 
 This Python module parses a block style document into a dict using dissectors. The main goal is to parse Cisco configuration files, but any vendor is supported as long as the configuration format is block style. The dissector uses indentation or end-of-block markers to determine the hierarchical level of each line.
