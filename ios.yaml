@@ -114,6 +114,7 @@
   - match: switchport trunk native vlan (?P<native_vlan>\d+)
   - match: switchport mode (?P<mode>\S+)
   - match: switchport access vlan (?P<access_vlan>\d+)
+  - match: switchport voice vlan (?P<voice_vlan>\d+)
   - match: channel-group (?P<id>\d+) mode (?P<mode>\S+)
     parent: channel
   - match: logging event (\S+)
@@ -133,10 +134,11 @@
     name: stp_portfast
     value: enable
   - match: spanning-tree portfast (?P<stp_portfast>trunk)
-  - match: service-policy input (?P<ingress>\S+) in
+  - match: service-policy input (?P<ingress>\S+)
     parent: service_policy
   - match: service-policy output (?P<egress>\S+)
     parent: service_policy
+  - match: dot1x pae (?P<dot1x_pae>\S+)
 - match: router bgp (?P<local_as>\d+)
   name: bgp
   child:
@@ -172,7 +174,7 @@
     - match: redistribute (\S+)
       name: redistribute
   - match: address-family ipv6 vrf (\S+)
-    parent: af_ipv4_vrf
+    parent: af_ipv6_vrf
     child:
     - match: network (?P<network>.*)
     - match: neighbor (\S+) description (?P<description>.*)
@@ -191,5 +193,11 @@
   parent: route
   key: uuid
 - match: ip route vrf (?P<vrf>\S+) (?P<dest>\S+) (?P<mask>\S+) (?P<nexthop>\S+)
+  parent: route
+  key: uuid
+- match: ipv6 route (?!vrf)(?P<dest>\S+) (?P<nexthop>\S+)
+  parent: route
+  key: uuid
+- match: ipv6 route vrf (?P<vrf>\S+) (?P<dest>\S+) (?P<nexthop>\S+)
   parent: route
   key: uuid
