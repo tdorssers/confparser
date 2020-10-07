@@ -57,6 +57,14 @@
   parent: ipv4_acl
   child:
     match: (\d+) (?P<rule>.*)
+- match: nv
+  child:
+    match: satellite (\d+)
+    parent: satellite
+    child:
+    - match: type (?P<type>\S+)
+    - match: description (?P<description>\S+)
+    - match: serial-number (?P<sn>\S+)
 - match: interface (?!preconfigure)(\S+) ?(?P<mode>l2transport)?
   parent: interface
   child:
@@ -102,6 +110,14 @@
       match: satellite-fabric-link satellite (\d+)
       name: satellite
   - match: lacp period (?P<lacp_period>\S+)
+  - match: lldp
+    child:
+      - match: receive disable
+        name: rx
+        value: false
+      - match: transmit disable
+        name: tx
+        value: false
 - match: route-policy (\S+)
   parent: route_policy
   child:
@@ -109,7 +125,13 @@
     actionall: list
 - match: evpn
   child:
-    match: interface (\S+)
+  - match: evi (\d+)
+    parent: evi
+    child:
+      match: advertise-mac
+      name: advertise_mac
+      value: true
+  - match: interface (\S+)
     parent: interface
     child:
       match: ethernet-segment
