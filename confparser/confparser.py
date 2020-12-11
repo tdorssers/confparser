@@ -160,7 +160,7 @@ class AutoDissector(object):
         """ Return Tree object from matching parser for given file """
         with open(filename) as f:
             # Look for hint in first few lines of the file
-            for line in itertools.islice(f, 15):
+            for line in itertools.islice(f, 23):
                 for parser, param in self.parsers.items():
                     m = param['hint'].search(line)
                     if m:
