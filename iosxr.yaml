@@ -105,6 +105,7 @@
   - match: proxy-arp
     name: ipv4_features
     action: list
+  - match: ipv6 address (?P<ipv6>.*)
   - match: nv
     child:
       match: satellite-fabric-link satellite (\d+)
@@ -177,7 +178,10 @@
           match: split-horizon group
           name: split_horizon_group
           value: 2
-      - match: vfi (?P<vfi>\S+)
+      - match: vfi (\S+)
+        parent: vfi
+        child:
+          match: vpn-id (?P<vpn_id>\d+)
       - match: routed interface (?P<routed_interface>\S+)
       - match: evi (?P<evi>\d+)
 - match: router static
@@ -189,14 +193,27 @@
       match: address-family (\S+)
       parent: af
       child:
-        match: (\S+) (?P<nexthop>\S+)
+        match: '(\S+)(?: vrf (?P<vrf>\S+))?(?: (?=[A-Tn])(?P<interface>\S+))?(?: (?=(?:\S*[\.:])+)(?P<nexthop>\S+))?(?: (?P<distance>\d+))?(?: description (?P<description>\S+))?'
 - match: router bgp (?P<local_as>\d+)
   name: bgp
   child:
+  - match: neighbor-group (\S+)
+    parent: neighbor_group
+    child:
+    - match: remote-as (?P<remote_as>\S+)
+    - match: local-as (?P<local_as>\S+)
+    - match: description (?P<description>.*)
+    - match: address-family (\S+) unicast
+      parent: af
   - match: neighbor (\S+)
     parent: neighbor
     child:
-      match: description (?P<description>.*)
+    - match: remote-as (?P<remote_as>\S+)
+    - match: local-as (?P<local_as>\S+)
+    - match: description (?P<description>.*)
+    - match: address-family (\S+) unicast
+      parent: af
+    - match: use neighbor-group (?P<neighbor_group>\S+)
   - match: vrf (\S+)
     parent: vrf
     child:
@@ -214,7 +231,12 @@
     - match: neighbor (\S+)
       parent: neighbor
       child:
-        match: description (?P<description>.*)
+      - match: remote-as (?P<remote_as>\S+)
+      - match: local-as (?P<local_as>\S+)
+      - match: description (?P<description>.*)
+      - match: address-family (\S+) unicast
+        parent: af
+      - match: use neighbor-group (?P<neighbor_group>\S+)
 - match: router hsrp
   name: hsrp
   child:
@@ -238,6 +260,8 @@
         - match: address (?P<address>\S+)$
         - match: address (?P<secondary>\S+) secondary
           actionall: list
+        - match: address global (?P<address>\S+)
+        - match: address linklocal (?P<linklocal>\S+)
         - match: bfd fast-detect peer ipv[46] (?P<bfd_peer>\S+)
 - match: multicast-routing
   name: multicast

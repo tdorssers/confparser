@@ -1,4 +1,7 @@
 - match: hostname (?P<hostname>\S+)
+- match: (?:no )?feature lldp
+  name: lldp_run
+  action: bool
 - match: ip domain name (?P<domain>\S+)
 - match: ip name-server (?P<name_server>\S+)
 - match: vrf context (\S+)
@@ -26,6 +29,9 @@
   parent: vlan
   child:
     match: name (?P<name>.*)
+- match: (?:no )?cdp enable
+  name: cdp_run
+  action: bool
 - match: interface (\S+)
   parent: interface
   child:
@@ -80,6 +86,12 @@
     action: bool
   - match: (?:no )?cdp enable
     name: cdp_enable
+    action: bool
+  - match: (?:no )?lldp transmit
+    name: lldp_tx
+    action: bool
+  - match: (?:no )?lldp receive
+    name: lldp_rx
     action: bool
   - match: ip router ospf (\S+) area (?P<area>\S+)
     parent: ospf
