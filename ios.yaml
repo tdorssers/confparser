@@ -13,7 +13,7 @@
     child:
     - match: route-target export (?P<export>\S+)
     - match: route-target import (?P<import>\S+)
-- match: switch \d+ provision (?P<switch>\S+)
+- match: switch \d+ provision (?P<stack>\S+)
   actionall: list
 - match: (?P<igmp_snoop>(?:no )?ip igmp snooping vlan) (\d+)
   parent: vlan_conf
@@ -160,14 +160,27 @@
     parent: neighbor
   - match: neighbor (\S+) remote-as (?P<remote_as>.*)
     parent: neighbor
+  - match: neighbor (\S+) password 7 (?P<password>\S+)
+    parent: neighbor
+    actionall: decrypt7
+  - match: neighbor (\S+) fall-over bfd
+    parent: neighbor
+    name: bfd
+    action: bool
+  - match: neighbor (\S+) route-map (?P<route_map_in>\S+) in
+    parent: neighbor
+  - match: neighbor (\S+) route-map (?P<route_map_out>\S+) out
+    parent: neighbor
   - match: neighbor (\S+) inherit peer-session (?P<peer_session>.*)
     parent: neighbor
   - match: template peer-session (\S+)
     parent: peer_session
     child:
+    - match: description (?P<description>.*)
     - match: remote-as (?P<remote_as>.*)
     - match: password 7 (?P<password>\S+)
       actionall: decrypt7
+    - match: fall-over (?P<fall_over>bfd)
   - match: address-family ipv4$
     name: af_ipv4
     child:
@@ -184,8 +197,22 @@
       parent: neighbor
     - match: neighbor (\S+) remote-as (?P<remote_as>.*)
       parent: neighbor
+    - match: neighbor (\S+) password 7 (?P<password>\S+)
+      parent: neighbor
+      actionall: decrypt7
+    - match: neighbor (\S+) fall-over (?P<fall_over>bfd)
+      parent: neighbor
+    - match: neighbor (\S+) route-map (?P<route_map_in>\S+) in
+      parent: neighbor
+    - match: neighbor (\S+) route-map (?P<route_map_out>\S+) out
+      parent: neighbor
+    - match: neighbor (\S+) inherit peer-session (?P<peer_session>.*)
+      parent: neighbor
     - match: redistribute (\S+)
       name: redistribute
+    - match: default-information originate
+      name: default_originate
+      value: true
   - match: address-family ipv6 vrf (\S+)
     parent: af_ipv6_vrf
     child:
@@ -194,17 +221,33 @@
       parent: neighbor
     - match: neighbor (\S+) remote-as (?P<remote_as>.*)
       parent: neighbor
+    - match: neighbor (\S+) password 7 (?P<password>\S+)
+      parent: neighbor
+      actionall: decrypt7
+    - match: neighbor (\S+) fall-over (?P<fall_over>bfd)
+      parent: neighbor
+    - match: neighbor (\S+) route-map (?P<route_map_in>\S+) in
+      parent: neighbor
+    - match: neighbor (\S+) route-map (?P<route_map_out>\S+) out
+      parent: neighbor
+    - match: neighbor (\S+) inherit peer-session (?P<peer_session>.*)
+      parent: neighbor
     - match: redistribute (\S+)
       name: redistribute
-- match: ip route (?!vrf)(?P<dest>\S+) (?P<mask>\S+) (?P<nexthop>\S+)
+    - match: default-information originate
+      name: default_originate
+      value: true
+- match: 'ip route(?: vrf (?P<vrf>\S+))? (?P<destination>\S+ \S+)(?: (?=[A-V])(?P<interface>\S+))?(?: (?=(?:\S*[\.:])+)(?P<nexthop>\S+))?(?: (?P<distance>\d+))?(?: name (?P<name>\S+))?'
+  parent: route
+  actionall: cidr
+  key: uuid
+- match: 'ipv6 route(?: vrf (?P<vrf>\S+))? (?P<destination>\S+)(?: (?=[A-V])(?P<interface>\S+))?(?: (?=(?:\S*[\.:])+)(?P<nexthop>\S+))?(?: (?P<distance>\d+))?(?: name (?P<name>\S+))?'
   parent: route
   key: uuid
-- match: ip route vrf (?P<vrf>\S+) (?P<dest>\S+) (?P<mask>\S+) (?P<nexthop>\S+)
-  parent: route
-  key: uuid
-- match: ipv6 route (?!vrf)(?P<dest>\S+) (?P<nexthop>\S+)
-  parent: route
-  key: uuid
-- match: ipv6 route vrf (?P<vrf>\S+) (?P<dest>\S+) (?P<nexthop>\S+)
-  parent: route
-  key: uuid
+- match: wireless profile policy (\S+)
+  parent: wlan_policy
+  child:
+  - match: vlan (?P<vlan>\S+)
+  - match: (?:no )?shutdown
+    name: shutdown
+    action: bool

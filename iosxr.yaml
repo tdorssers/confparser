@@ -57,6 +57,11 @@
   parent: ipv4_acl
   child:
     match: (\d+) (?P<rule>.*)
+- match: policy-map (\S+)
+  parent: policy_map
+  child:
+    match: class (\S+)
+    parent: class
 - match: nv
   child:
     match: satellite (\d+)
@@ -83,6 +88,8 @@
   - match: lacp system mac (?P<lacp_sys_mac>\S+)
   - match: mac-address (?P<mac>\S+)
   - match: vrf (?P<vrf>\S+)
+  - match: l2transport
+    name: mode
   - match: ipv4 address (?P<ipv4>.*)
     actionall: cidr
   - match: ipv4 access-group (?P<ingress>\S+) ingress
@@ -106,6 +113,10 @@
     name: ipv4_features
     action: list
   - match: ipv6 address (?P<ipv6>.*)
+  - match: ipv6 access-group (?P<ingress>\S+) ingress
+    parent: ipv6_acl
+  - match: ipv6 access-group (?P<egress>\S+) egress
+    parent: ipv6_acl
   - match: nv
     child:
       match: satellite-fabric-link satellite (\d+)
@@ -148,6 +159,20 @@
       - match: multi-homing node-id (?P<node>\d)
       - match: interface (?P<interface>\S+)
         actionall: list
+  - match: xconnect group (\S+)
+    parent: xconnect_group
+    child:
+      match: p2p (\S+)
+      parent: p2p
+      child:
+      - match: description (?P<description>.*)
+      - match: interface (?P<interface>\S+)
+        actionall: list
+      - match: monitor-session (?P<monitor_session>\S+)
+      - match: neighbor ipv[46] (\S+) pw-id (?P<pw_id>\d+)
+        parent: neighbor
+      - match: neighbor evpn evi (\d+) target (?P<target>\d+) source (?P<source>\d+)
+        parent: evi
   - match: bridge group (\S+)
     parent: bridge_group
     child:
@@ -178,6 +203,7 @@
           match: split-horizon group
           name: split_horizon_group
           value: 2
+#      - match: vfi (?P<vfi>\S+)
       - match: vfi (\S+)
         parent: vfi
         child:
@@ -202,17 +228,26 @@
     child:
     - match: remote-as (?P<remote_as>\S+)
     - match: local-as (?P<local_as>\S+)
+    - match: bfd minimum-interval (?P<bfd_int>\d+)
+    - match: bfd multiplier (?P<bfd_mul>\d+)
+    - match: bfd fast-detect
+      name: bfd
+      action: bool
+    - match: password encrypted (?P<password>\S+)
+      actionall: decrypt7
     - match: description (?P<description>.*)
+    - match: update-source (?P<update_source>\S+)
     - match: address-family (\S+) unicast
       parent: af
+      child:
+      - match: route-policy (?P<in>\S+) in
+        parent: route_policy
+      - match: route-policy (?P<out>\S+) out
+        parent: route_policy
   - match: neighbor (\S+)
     parent: neighbor
     child:
-    - match: remote-as (?P<remote_as>\S+)
-    - match: local-as (?P<local_as>\S+)
     - match: description (?P<description>.*)
-    - match: address-family (\S+) unicast
-      parent: af
     - match: use neighbor-group (?P<neighbor_group>\S+)
   - match: vrf (\S+)
     parent: vrf
@@ -233,9 +268,22 @@
       child:
       - match: remote-as (?P<remote_as>\S+)
       - match: local-as (?P<local_as>\S+)
+      - match: bfd minimum-interval (?P<bfd_int>\d+)
+      - match: bfd multiplier (?P<bfd_mul>\d+)
+      - match: bfd fast-detect
+        name: bfd
+        action: bool
+      - match: password encrypted (?P<password>\S+)
+        actionall: decrypt7
       - match: description (?P<description>.*)
+      - match: update-source (?P<update_source>\S+)
       - match: address-family (\S+) unicast
         parent: af
+        child:
+        - match: route-policy (?P<in>\S+) in
+          parent: route_policy
+        - match: route-policy (?P<out>\S+) out
+          parent: route_policy
       - match: use neighbor-group (?P<neighbor_group>\S+)
 - match: router hsrp
   name: hsrp
