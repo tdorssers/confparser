@@ -30,6 +30,7 @@ Supported actions are:
 | split | Split string into list of words |
 | list | Convert string to list unconditionally |
 | cidr | Convert netmask to prefix length in IP address string |
+| cidr_l | cidr action with list to convert string to list unconditionally |
 | bool | Sets the value to False if the line starts with 'no' or else to True |
 
 Existing values are not overwritten but will be extended as lists.
