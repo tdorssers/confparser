@@ -28,7 +28,7 @@ expand_h : Convert Huawei-style port ranges into list of ports
 split    : Split string into list of words
 list     : Convert string to list unconditionally
 cidr     : Convert netmask to prefix length in IP address string
-cidr_l   : cidr action with list to oonvert string to list unconditionally
+cidr_l   : cidr action with list to convert string to list unconditionally
 bool     : Sets the value to False if the line starts with 'no' or else to True
 decrypt7 : Decrypts a Cisco type 7 password
 
