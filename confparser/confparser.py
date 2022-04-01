@@ -292,12 +292,12 @@ def _expand(string):
     result = []
     for element in re.split(', *', string):
         # Expand 1-2 to [1, 2] or 1/3-4 to [1/3, 1/4] or 1/5-1/6 to [1/5, 1/6]
-        m = re.match(r'([0-9/]*?)(\d+)-\1?(\d+)', element)
+        m = re.match(r'([A-Za-z0-9/]*?)(\d+)\s*-\s*\1?(\d+)', element)
         if m:
             for num in range(int(m.group(2)), int(m.group(3)) + 1):
                 result.append(m.group(1) + str(num))
         else:
-            result.append(element)
+            result.append(element.strip())
     return result
 
 def _expand_f(string):
