@@ -1,0 +1,69 @@
+- match: snmp-server name "(?P<hostname>.*?)"
+- match: vlan create (\S+)
+  parent: vlan
+  action: expand
+- match: vlan name (\d+) "(?P<name>.*?)"
+  parent: vlan
+- match: vlan members (?!.*add)(\S+) (?P<ports>\S+)
+  action: expand
+  actionall: expand
+  parent: vlan
+- match: vlan members add (\S+) (?P<ports>\S+)
+  action: expand
+  actionall: expand
+  parent: vlan
+- match: vlan ports (\S+) tagging (?P<mode>\S+)
+  action: expand
+  parent: interface
+- match: vlan ports (\S+) pvid (?P<access_vlan>\d+)
+  action: expand
+  parent: interface
+- match: name port (\S+) "?(?P<description>[^"]*)"?
+  action: expand
+  parent: interface
+- match: auto-negotiation-advertisements port (\S+) (?P<ana>.*)
+  action: expand
+  actionall: split
+  parent: interface
+- match: speed port (\S+) (?P<speed>\d+)
+  action: expand
+  parent: interface
+- match: duplex port (\S+) (?P<duplex>\S+)
+  action: expand
+  parent: interface
+- match: (?P<shutdown>shutdown) port (\S+)
+  action: expand
+  actionall: bool
+  parent: interface
+- match: poe (?P<power_inline>poe-shutdown) port (\S+)
+  action: expand
+  parent: interface
+- match: spanning-tree bpdu-filtering port (\S+) (?P<bpdu_filtering>enable)
+  action: expand
+  parent: interface
+- match: spanning-tree port (\S+) learning (?P<stp_learning>\S+)
+  action: expand
+  parent: interface
+- match: eapol port (\S+) status (?P<eapol_status>\S+)
+  action: expand
+  parent: interface
+- match: vlan mgmt (?P<vlan_mgmt>\d+)
+- match: ist vlan (?P<ist_vlan>\d+)
+- match: interface (vlan \d+)
+  parent: interface
+  child:
+  - match: ip igmp snooping
+    name: igmp_snoop
+    value: true
+  - match: ip address (?P<ipv4>\S+)
+    actionall: cidr
+- match: (?P<lldp_status>no )lldp port (\S+) status
+  action: expand
+  actionall: bool
+  parent: interface
+- match: lldp port (\S+) status (?P<lldp_status>\S+)
+  action: expand
+  parent: interface
+- match: mlt (\d+) name "(?P<name>.*?)" enable member (?P<member>\S+)
+  actionall: expand
+  parent: mlt

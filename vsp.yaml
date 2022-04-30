@@ -1,0 +1,55 @@
+- match: prompt "?(?P<hostname>[^"]*)"?
+- match: vlan create (\d+) name "(?P<name>.*?)"
+  parent: vlan
+- match: vlan members (\d+) (?P<ports>\S+)
+  actionall: expand
+  parent: vlan
+- match: vlan i-sid (\d+) (?P<i_sid>\d+)
+  parent: vlan
+- match: interface (?:GigabitEthernet )?(.*)
+  parent: interface
+  child:
+  - match: name "(?P<description>.*?)"
+  - match: encapsulation dot1q
+    name: mode
+    value: trunk
+  - match: ip address (?P<ipv4>\S+)
+    actionall: cidr
+  - match: auto-negotiation-advertisements (?P<ana>.*)
+    actionall: split
+  - match: (?:no )?shutdown
+    name: shutdown
+    action: bool
+  - match: (?:no )?auto-negotiate
+    name: auto_neg
+    action: bool
+  - match: speed (?P<speed>.*)
+  - match: duplex (?P<duplex>.*)
+  - match: default-vlan-id (?P<native_vlan>\d+)
+  - match: (?:no )?spanning-tree mstp edge-port true
+    name: stp_edge_port
+    action: bool
+  - match: (?:no )?spanning-tree mstp +force-port-state enable
+    name: stp_port_enable
+    action: bool
+  - match: isis spbm (?P<spbm>\d+)
+  - match: poe (?P<power_inline>poe-shutdown)
+  - match: eapol status (?P<eapol_status>\S+)
+  - match: lldp status (?P<lldp_status>\S+)
+- match: ip route (\S+ \S+) (?P<nexthop>\S+)
+  parent: route
+- match: router isis
+  name: isis
+  child:
+    match: spbm (\d+) b-vid (?P<b_vid>\S+)
+    parent: spbm
+    actionall: expand
+- match: i-sid (\d+) elan-transparent
+  parent: elan_tp
+  child:
+    match: port (?P<port>\S+)
+- match: mlt (\d+) member (?P<ports>\S+)
+  actionall: expand
+  parent: mlt
+- match: mlt (\d+) encapsulation (?P<mode>dot1q)
+  parent: mlt

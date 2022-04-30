@@ -1,0 +1,27 @@
+- match: hostname (?P<hostname>\S+)
+- match: (?:no )?lldp enable
+  name: lldp_run
+  action: bool
+- match: interface (.*)
+  parent: interface
+  child:
+  - match: name "?(?P<description>[^"]*)"?
+  - match: (?:no )?shutdown
+    name: shutdown
+    action: bool
+  - match: (?:no )?poe\s*$
+    name: power_inline
+    action: bool
+  - match: switchport trunk fixed vlan add\s+(\S+)
+    name: allowed_vlan
+    action: expand
+  - match: switchport trunk native vlan\s+(?P<native_vlan>\d+)
+  - match: switchport access vlan\s+(?P<access_vlan>\d+)
+  - match: trunk-group (?P<trunk_group>\d+)
+  - match: speed-duplex (?P<speed_duplex>\S+)
+  - match: bind vlan (?P<bind_vlan>\d+)
+  - match: ip address static (?P<ipv4>.*)
+    actionall: cidr
+- match: vlan create\s+(\S+)
+  parent: vlan
+  action: expand

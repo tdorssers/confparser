@@ -1,0 +1,56 @@
+- match: hostname (?P<hostname>\S+)
+- match: lag "?(?P<name>[^"]*)"? (?P<mode>(?:static)|(?:dynamic)) id (\d+)
+  parent: lag
+  child:
+    match: ports (?P<interface>.*)
+    actionall: expand_f
+- match: 'vlan (\d+)(?: name "?(?P<name>[^"]*?)"?(?: by|$))?'
+  parent: vlan
+  child:
+  - match: untagged (?P<untagged>.*)
+    actionall: expand_f
+  - match: tagged (?P<tagged>.*)
+    actionall: expand_f
+  - match: router-interface ve (.*)
+    name: ve
+- match: vrf (.*)
+  parent: vrf
+  child:
+    match: ip(?:v6)? route (\S+) (?P<nexthop>(?:ve |ethernet )?\S+)
+    parent: route
+- match: ip(?:v6)? route (\S+) (?P<nexthop>(?:ve |ethernet )?\S+)
+  parent: route
+- match: policy-map (.*)
+  parent: policy
+  child:
+    search: cir (?P<cir>\d+) cbs (?P<cbs>\d+)
+- match: interface (.*)
+  parent: interface
+  child:
+  - match: port-name "?(?P<name>[^"]*)"?
+  - match: (?:enable)|(?:disable)
+    name: admin_state
+  - match: rate-limit output policy-map (?P<output>.*)
+    parent: rate-limit
+  - match: rate-limit input policy-map (?P<input>.*)
+    parent: rate-limit
+  - match: rate-limit output vlan-id (\d+) policy-map (?P<output>.*)
+    parent: rate-limit
+  - match: rate-limit input vlan-id (\d+) policy-map (?P<input>.*)
+    parent: rate-limit
+  - match: ip address (?P<ipv4>.*)
+  - match: ipv6 address (?P<ipv6>.*)
+  - match: ipv6 nd ((?:.*config-flag)|(?:suppress-ra))
+    name: nd
+    action: list
+  - match: ip vrrp-extended vrid (?P<vrid>\d+)
+    name: vrrp
+    child:
+    - match: ip-address (?P<ipv4>.*)
+    - match: backup priority (?P<priority>\d+)
+  - match: ipv6 vrrp-extended vrid (?P<vrid>\d+)
+    name: vrrp6
+    child:
+    - match: ipv6-address (?P<ipv6>.*)
+    - match: backup priority (?P<priority>\d+)
+  - match: vrf forwarding (?P<vrf>.*)

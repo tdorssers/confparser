@@ -1,0 +1,22 @@
+- match: config sysname (?P<hostname>\S+)
+- match: config interface vlan "?([^"]*)"? (?P<vlan_id>\d+)
+  parent: interface
+- match: config interface address (management) (?P<ip_addr>\S+) (?P<netmask>\S+) (?P<gw>\S+)
+  parent: interface
+- match: config interface address (virtual) (?P<ip_addr>\S+)
+  parent: interface
+- match: config interface address dynamic-interface "?([^"]*)"? (?P<ip_addr>\S+) (?P<netmask>\S+) (?P<gw>\S+)
+  parent: interface
+- match: config interface group create (\S+) "?(?P<description>[^"]*)"?
+  parent: interface_group
+- match: config interface group interface add (\S+) (?P<interfaces>\S+)
+  parent: interface_group
+  actionall: list
+- match: config interface port "?([^"]*)"? (?P<ds_port>\d+)
+  parent: interface
+- match: config wlan create (\d+) (?P<profile_name>\S+) (?P<ssid>\S+)
+  parent: wlan
+- match: config wlan interface (\d+) "?(?P<interface>[^"]*)"?
+  parent: wlan
+- match: config wlan (?P<status>enable|disable) (\d+)
+  parent: wlan

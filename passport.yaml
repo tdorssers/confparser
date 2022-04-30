@@ -1,0 +1,36 @@
+- match: cli prompt "?(?P<hostname>[^"]*)"?
+- match: ip vrf (?P<name>\S+) create id (\d+)
+  parent: vrf
+- match: mlt (\d+) add ports (?P<ports>\S+)
+  parent: mlt
+  actionall: expand
+- match: mlt (\d+) name "(?P<name>.*?)"
+  parent: mlt
+- match: mlt (\d+) (?P<mode>perform-tagging) enable
+  parent: mlt
+- match: mlt (\d+) smlt create smlt-id (?P<smlt_id>\d+)
+  parent: mlt
+- match: mlt \d+ ist create ip \S+ vlan-id (?P<ist_vlan>\d+)
+- match: stg (\d+) +add ports (?P<ports>\S+)
+  parent: stg
+  actionall: expand
+- match: vlan (\d+) create (?P<type>\S+) (?P<stg>\d+) name "(?P<name>.*?)"
+  parent: vlan
+- match: vlan (\d+) add-mlt (?P<mlt>\d+)
+  parent: vlan
+- match: vlan (\d+) ports add (?P<ports>\S+) member portmember
+  parent: vlan
+  actionall: expand
+- match: vlan (\d+) vrf (?P<vrf>\S+)
+  parent: vlan
+- match: vlan (\d+) ip create (?P<ipv4>\S+)
+  parent: vlan
+  actionall: cidr
+- match: ethernet (\S+) (?P<mode>perform-tagging) enable
+  parent: interface
+- match: ethernet (\S+) default-vlan-id (?P<native_vlan>\d+)
+  parent: interface
+- match: ethernet (\S+) name "(?P<description>.*?)"
+  parent: interface
+- match: ethernet (\S+) state (?P<state>disable)
+  parent: interface

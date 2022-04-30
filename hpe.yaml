@@ -1,0 +1,32 @@
+- search: sysname (?P<hostname>\S+)
+- match: vlan (\d+)
+  parent: vlan
+  child:
+    - match: name (?P<name>\S+)
+    - match: arp detection enable
+      name: arp_inspect
+      value: true
+    - match: igmp-snooping enable
+      name: igmp_snooping
+      value: true
+- match: interface (\S+)
+  parent: interface
+  child:
+  - match: description (?P<description>.*)
+  - match: ip address (?P<ipv4>[0-9.]+ [0-9.]+)
+    actionall: cidr
+  - match: port access vlan (?P<access_vlan>\d+)
+  - match: shutdown
+    name: shutdown
+    value: true
+  - match: port link-type (?P<mode>\S+)
+  - match: (?<!undo )port trunk permit vlan (?P<allowed_vlan>.*)
+    actionall: expand_h
+  - match: port trunk pvid vlan (?P<native_vlan>.*)
+  - match: voice vlan (?P<voice_vlan>.*) enable
+  - match: speed (?P<speed>.*)
+  - match: duplex (?P<duplex>\S+)
+  - match: stp edged-port (?P<stp_edge_port>enable)
+- search: ip route-static (\S+ \S+) (?P<nexthop>\S+)
+  parent: route
+  action: cidr
