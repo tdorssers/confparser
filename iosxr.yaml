@@ -42,6 +42,12 @@
       actionall: list
   - match: interface (\S+) relay profile (?P<profile>\S+)
     parent: interface
+- match: monitor-session (\S+)
+  parent: monitor_session
+  child:
+    - match: destination (?P<destination>interface) (?P<interface>\S+)
+    - match: 'destination (?P<destination>file)(?: size (?P<size>\d+))?(?: buffer-type (?P<buffer_type>\S+))?'
+    - match: destination (?P<destination>pseudowire)
 - match: redundancy
   child:
     match: iccp
@@ -130,6 +136,13 @@
       - match: transmit disable
         name: tx
         value: false
+  - match: arp timeout (?P<arp_timeout>\d+)
+  - match: 'monitor-session (\S+) ethernet(?: direction (?P<direction>\S+))?'
+    parent: monitor_session
+    child:
+      match: acl
+      name: acl
+      value: true
 - match: route-policy (\S+)
   parent: route_policy
   child:
@@ -203,12 +216,16 @@
           match: split-horizon group
           name: split_horizon_group
           value: 2
-#      - match: vfi (?P<vfi>\S+)
       - match: vfi (\S+)
         parent: vfi
         child:
           match: vpn-id (?P<vpn_id>\d+)
-      - match: routed interface (?P<routed_interface>\S+)
+      - match: routed interface (\S+)
+        parent: routed_interface
+        child:
+          match: split-horizon group core
+          name: split_horizon_group
+          value: 1
       - match: evi (?P<evi>\d+)
 - match: router static
   name: static
@@ -219,7 +236,7 @@
       match: address-family (\S+)
       parent: af
       child:
-        match: '(\S+)(?: vrf (?P<vrf>\S+))?(?: (?=[A-Tn])(?P<interface>\S+))?(?: (?=(?:\S*[\.:])+)(?P<nexthop>\S+))?(?: (?P<distance>\d+))?(?: description (?P<description>\S+))?'
+        match: '([^! ]+)(?: vrf (?P<vrf>\S+))?(?: (?=[A-Tn])(?P<interface>\S+))?(?: (?=(?:\S*[\.:])+)(?P<nexthop>\S+))?(?: (?P<distance>\d+))?(?: description (?P<description>\S+))?'
 - match: router bgp (?P<local_as>\d+)
   name: bgp
   child:
