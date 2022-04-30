@@ -1,3 +1,4 @@
+- match: version (?P<version>\S+)
 - match: hostname (?P<hostname>\S+)
 - match: ip domain[ -]name (?P<domain>\S+)
 - match: ip name-server (?P<name_server>\S+)
@@ -15,9 +16,17 @@
     - match: route-target import (?P<import>\S+)
 - match: switch \d+ provision (?P<stack>\S+)
   actionall: list
+- match: call-home
+  name: call_home
+  child:
+    match: http-proxy "(?P<http_proxy>.*?)" port (?P<port>\d+)
 - match: (?P<igmp_snoop>(?:no )?ip igmp snooping vlan) (\d+)
   parent: vlan_conf
   actionall: bool
+- match: vtp mode (?P<vtp_mode>\S+)
+- match: vlan group (\S+) vlan-list (?P<vlan_list>\S+)
+  parent: vlan_group
+  actionall: expand
 - match: vlan configuration (\S+)
   parent: vlan_conf
   action: expand
@@ -36,11 +45,19 @@
 - match: (?:no )?lldp run
   name: lldp_run
   action: bool
-- match: class-map match-(?P<match>\S+) (ST-Qos-1.0-Input-Priority-Voice)
+- match: class-map match-(?P<match>\S+) (?!system-cpp)(\S+)
   parent: class_map
   child:
     match: \s*(?P<lines>.*)
     actionall: list
+- match: policy-map (?!system-cpp)(\S+)
+  parent: policy_map
+  child:
+    match: class (\S+)
+    parent: class
+    child:
+      match: 'set (?:ip )?(\S+) (?P<marking>\S+)(?: table (?P<table_map>\S+))?'
+      parent: set
 - match: interface (\S+)
   parent: interface
   child:
@@ -54,6 +71,9 @@
     actionall: cidr
   - match: ip address (?P<ipv4_secondary>.*) secondary
     actionall: cidr
+  - match: no ip address
+    name: ipv4
+    value: false
   - match: (?:no )?ip redirects
     name: ipv4_redirects
     action: bool
@@ -244,10 +264,41 @@
 - match: 'ipv6 route(?: vrf (?P<vrf>\S+))? (?P<destination>\S+)(?: (?=[A-V])(?P<interface>\S+))?(?: (?=(?:\S*[\.:])+)(?P<nexthop>\S+))?(?: (?P<distance>\d+))?(?: name (?P<name>\S+))?'
   parent: route
   key: uuid
+- match: ip route (?!vrf)(?P<dest>\S+) (?P<mask>\S+) (?P<nexthop>\S+)
+  parent: route
+  key: uuid
+- match: ip route vrf (?P<vrf>\S+) (?P<dest>\S+) (?P<mask>\S+) (?P<nexthop>\S+)
+  parent: route
+  key: uuid
+- match: ipv6 route (?!vrf)(?P<dest>\S+) (?P<nexthop>\S+)
+  parent: route
+  key: uuid
+- match: ipv6 route vrf (?P<vrf>\S+) (?P<dest>\S+) (?P<nexthop>\S+)
+  parent: route
+  key: uuid
+- match: 'monitor session (\d+) source interface (?P<source>.*?)(?: (?P<direction>both|tx|rx)|$)'
+  parent: span
+  actionall: expand
+- match: 'monitor session (\d+) destination interface (?P<dest>.*?)(?: encapsulation (?P<egress_encap>\S+))?(?: ingress (?P<ingress_encap>\S+ )?vlan (?P<ingress_vlan>\d+))?$'
+  parent: span
+  actionall: expand
 - match: wireless profile policy (\S+)
-  parent: wlan_policy
+  parent: policy_profile
   child:
+  - match: description "?(?P<description>[^"]*)"?
   - match: vlan (?P<vlan>\S+)
+  - match: (?:no )?shutdown
+    name: shutdown
+    action: bool
+- match: wireless tag policy (\S+)
+  parent: policy_tag
+  child:
+  - match: description "?(?P<description>[^"]*)"?
+  - match: wlan (\S+) policy (?P<policy_profile>\S+)
+    parent: wlan_profile
+- match: wlan (\S+) (?P<wlan_id>\S+) (?P<ssid>\S+)
+  parent: wlan_profile
+  child:
   - match: (?:no )?shutdown
     name: shutdown
     action: bool
