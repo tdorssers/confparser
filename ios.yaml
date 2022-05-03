@@ -118,6 +118,8 @@
     parent: standby
   - match: bfd interval (?P<interval>\d+) min_rx (?P<min_rx>\d+) multiplier (?P<multiplier>\d+)
     parent: bfd
+  - match: mtu (?P<mtu>\d+)
+  - match: carrier-delay (?P<carrier_delay>\d+)
   - match: (?:no )?shutdown
     name: shutdown
     action: bool
@@ -130,8 +132,6 @@
   - match: (?:no )?lldp receive
     name: lldp_rx
     action: bool
-  - match: mtu (?P<mtu>\d+)
-  - match: carrier-delay (?P<carrier_delay>\d+)
   - match: switchport trunk allowed vlan (?!add)(\S+)
     name: allowed_vlan
     action: expand
@@ -147,14 +147,20 @@
     value: false
   - match: channel-group (?P<id>\d+) mode (?P<mode>\S+)
     parent: channel
+  - match: (?:no )?snmp trap link-status
+    name: link_trap
+    action: bool
   - match: logging event (\S+)
-    action: list
-    name: logging
+    parent: logging
+    value: true
+  - match: no logging event (\S+)
+    parent: logging
+    value: false
   - match: cts manual
     child:
       match: policy static sgt (\d+)
       name: sgt
-  - match: power inline (?P<power_inline>\S+)
+  - match: power inline (?P<power_inline>.*)
   - match: speed (?P<speed>.*)
     actionall: split
   - match: duplex (?P<duplex>.*)
@@ -169,9 +175,11 @@
   - match: service-policy output (?P<egress>\S+)
     parent: service_policy
   - match: dot1x pae (?P<dot1x_pae>\S+)
-  - match: (?:no )?snmp trap link-status
-    name: link_trap
-    action: bool
+  - match: lacp rate (?P<lacp_rate>\S+)
+  - match: storm-control action (?P<action>\S+)
+    parent: storm_control
+  - match: storm-control (\S+) level (?:(?P<level>[\d\.]+) ?(?P<level_low>[\d\.]+)?|(?:pps (?P<pps>\S+) ?(?P<pps_low>\S+)?)|(?:bps (?P<bps>\S+) ?(?P<bps_low>\S+)?))
+    parent: storm_control
 - match: router bgp (?P<local_as>\d+)
   name: bgp
   child:
