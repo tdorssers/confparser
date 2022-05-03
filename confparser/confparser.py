@@ -2,7 +2,7 @@
 Parse a block style document, such as Cisco configuration files, into a JSON
 formattable structure using dissectors.
 
-A dissector is a YAML formatted nested list of dicts with any of these keys: 
+A dissector is a YAML formatted nested list of dicts with any of these keys:
 match    : A regular expression to match at the beginning of a line. The first
            unnamed capture group can be used as key or as value. Named capture
            groups can be used to match more than one group.
@@ -12,8 +12,7 @@ child    : A nested dissector for a child block. The first unnamed capture group
            become key values of the child block.
 name     : Specifies the key name. If omitted, the first capture group or whole
            match is used as a key. Not to be used if only named groups are used.
-value    : Specifies the value in case no capture groups are used. Only valid
-           when 'name' is used.
+value    : Specifies the value. Not to be used if only named groups are used.
 parent   : Forces insertion of a parent dict using specified key.
 key      : Force capture group with specified index as key or generate unique
            key by setting to uuid.
@@ -28,13 +27,13 @@ expand_h : Convert Huawei-style port ranges into list of ports
 split    : Split string into list of words
 list     : Convert string to list unconditionally
 cidr     : Convert netmask to prefix length in IP address string
-cidr_l   : cidr action with list to convert string to list unconditionally
+cidr_l   : Convert string to CIDR format and then to list unconditionally
 bool     : Sets the value to False if the line starts with 'no' or else to True
 decrypt7 : Decrypts a Cisco type 7 password
 
 Existing values are not overwritten but will be extended as lists.
 
-Default parameters allow parsing of most configuration files. 
+Default parameters allow parsing of most configuration files.
 To parse NXOS use indent=2
 To parse VSP use indent=0, eob='exit'
 
@@ -43,21 +42,23 @@ that reference the dissector and source file used. A dissector can be created
 from a string or a file and can parse an iterable, a string or a file. Multiple
 dissectors can be registered to the AutoDissector which uses hints to match a
 dissector to a file. A hint is a regular expression that is unique to the first
-15 lines of a file.
+23 lines of a file.
 """
 
 # Author: Tim Dorssers
 
 import re
 import json
-import yaml
 import uuid
-import ipaddress
 import itertools
+import ipaddress
+import yaml
 
 
 class Tree(dict):
     """ Autovivificious dictionary with parent property as tree stucture """
+
+    __slots__ = 'parent', 'parser', 'source'
 
     def __init__(self, parent=None):
         """ Initialize self """
@@ -176,6 +177,7 @@ class AutoDissector(object):
                         return tree
         if self.raise_no_match:
             raise ValueError('None of the hints matched file %s' % filename)
+        return None
 
 
 def _parse(lines, context, indent=1, eob=None):
@@ -251,11 +253,16 @@ def _parse(lines, context, indent=1, eob=None):
                 # Add the unnamed group and named groups
                 named_groups.update({item['name']: value})
                 p_result.merge_retain(named_groups)
-            elif key:
-                # Apply action to key if specified and make list
+            elif 'value' in item:
+                # Apply action to key, use specified value for 'key' add groups
                 key = _action(item.get('action'), key)
-                key = [key] if not isinstance(key, list) else key
-                for k in key:
+                for k in [key] if not isinstance(key, list) else key:
+                    named_groups.update({k: item['value']})
+                p_result.merge_retain(named_groups)
+            elif key:
+                # Apply specified action to key and iterate over list of keys
+                key = _action(item.get('action'), key)
+                for k in [key] if not isinstance(key, list) else key:
                     # Add to Tree using named groups as value
                     p_result[k].merge_retain(named_groups)
             else:
@@ -264,28 +271,27 @@ def _parse(lines, context, indent=1, eob=None):
 
 def _action(method, value):
     """ Run given method on value """
-    if value is None:
-        return
+    if method is None or value is None:
+        return value
     if method == 'expand':
         return _expand(value)
-    elif method == 'split':
+    if method == 'split':
         return value.split()
-    elif method == 'list':
+    if method == 'list':
         return [value]
-    elif method == 'cidr':
+    if method == 'cidr':
         return _cidr(value)
-    elif method == 'cidr_l':
+    if method == 'cidr_l':
         return [_cidr(value)]
-    elif method == 'expand_f':
+    if method == 'expand_f':
         return _expand_f(value)
-    elif method == 'decrypt7':
+    if method == 'decrypt7':
         return _decrypt7(value)
-    elif method == 'bool':
+    if method == 'bool':
         return not value.startswith('no ')
-    elif method == 'expand_h':
+    if method == 'expand_h':
         return _expand_h(value)
-    else:
-        return value
+    return value
 
 def _expand(string):
     """ Convert number ranges with hyphens and commas into list of numbers """
@@ -303,8 +309,8 @@ def _expand(string):
 def _expand_f(string):
     """ Convert Foundry-style port ranges into list of ports """
     result = []
-    for port_range in re.findall('ethe(?:rnet)? (\S+(?: to )?\S+)', string):
-        m = re.match('(\S+\/)(\d+) to \S+\/(\d+)', port_range)
+    for port_range in re.findall(r'ethe(?:rnet)? (\S+(?: to )?\S+)', string):
+        m = re.match(r'(\S+\/)(\d+) to \S+\/(\d+)', port_range)
         if m:
             for port in range(int(m.group(2)), int(m.group(3)) + 1):
                 result.append(m.group(1) + str(port))
@@ -316,7 +322,7 @@ def _expand_h(string):
     """ Convert Huawei-style port ranges into list of ports """
     result = []
     for element in re.split('(?<!to) (?!to)', string):
-        m = re.match('(\d+) to (\d+)', element)
+        m = re.match(r'(\d+) to (\d+)', element)
         if m:
             for num in range(int(m.group(1)), int(m.group(2)) + 1):
                 result.append(str(num))
