@@ -16,6 +16,8 @@ value    : Specifies the value. Not to be used if only named groups are used.
 parent   : Forces insertion of a parent dict using specified key.
 key      : Force capture group with specified index as key or generate unique
            key by setting to uuid.
+grouping : Consider all named groups as a single branch. Not valid when 'child',
+           'name' or 'value' are used.
 action   : Perform specified action on first unnamed capture group or on whole
            match if no capture group specified. Not valid when 'child' is used.
 actionall: Perform specified action on all named capture groups.
@@ -30,6 +32,10 @@ cidr     : Convert netmask to prefix length in IP address string
 cidr_l   : Convert string to CIDR format and then to list unconditionally
 bool     : Sets the value to False if the line starts with 'no' or else to True
 decrypt7 : Decrypts a Cisco type 7 password
+
+Supported groupings are:
+implicit : Create list of branches when key is duplicate.
+explicit : Create list of branches unconditionally.
 
 Existing values are not overwritten but will be extended as lists.
 
@@ -263,8 +269,15 @@ def _parse(lines, context, indent=1, eob=None):
                 # Apply specified action to key and iterate over list of keys
                 key = _action(item.get('action'), key)
                 for k in [key] if not isinstance(key, list) else key:
-                    # Add to Tree using named groups as value
-                    p_result[k].merge_retain(named_groups)
+                    if item.get('grouping') == 'implicit':
+                        # Add names groups to Tree as a single value
+                        p_result.merge_retain({k: named_groups})
+                    elif item.get('grouping') == 'explicit':
+                        # Create list of named groups as value
+                        p_result[k] = p_result.get(k, []) + [named_groups]
+                    else:
+                        # Add to Tree using named groups as value
+                        p_result[k].merge_retain(named_groups)
             else:
                 p_result.merge_retain(named_groups)
     return result
