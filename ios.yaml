@@ -265,25 +265,13 @@
     - match: default-information originate
       name: default_originate
       value: true
-- match: 'ip route(?: vrf (?P<vrf>\S+))? (?P<destination>\S+ \S+)(?: (?=[A-V])(?P<interface>\S+))?(?: (?=(?:\S*[\.:])+)(?P<nexthop>\S+))?(?: (?P<distance>\d+))?(?: name (?P<name>\S+))?'
+- match: 'ip route(?: vrf (?P<vrf>\S+))? (\S+ \S+)(?: (?=[A-V])(?P<interface>\S+))?(?: (?=(?:\S*[\.:])+)(?P<nexthop>\S+))?(?: (?P<distance>\d+))?(?: tag (?P<tag>\d+))?(?: name "?(?P<name>[^"]*)"?)?(?: track (?P<track>\S+))?'
   parent: route
-  actionall: cidr
-  key: uuid
-- match: 'ipv6 route(?: vrf (?P<vrf>\S+))? (?P<destination>\S+)(?: (?=[A-V])(?P<interface>\S+))?(?: (?=(?:\S*[\.:])+)(?P<nexthop>\S+))?(?: (?P<distance>\d+))?(?: name (?P<name>\S+))?'
+  action: cidr
+  grouping: implicit
+- match: 'ipv6 route(?: vrf (?P<vrf>\S+))? (\S+)(?: (?=[A-V])(?P<interface>\S+))?(?: (?=(?:\S*[\.:])+)(?P<nexthop>\S+))?(?: (?P<distance>\d+))?(?: tag (?P<tag>\d+))?(?: name "?(?P<name>[^"]*)"?)?(?: track (?P<track>\S+))?'
   parent: route
-  key: uuid
-- match: ip route (?!vrf)(?P<dest>\S+) (?P<mask>\S+) (?P<nexthop>\S+)
-  parent: route
-  key: uuid
-- match: ip route vrf (?P<vrf>\S+) (?P<dest>\S+) (?P<mask>\S+) (?P<nexthop>\S+)
-  parent: route
-  key: uuid
-- match: ipv6 route (?!vrf)(?P<dest>\S+) (?P<nexthop>\S+)
-  parent: route
-  key: uuid
-- match: ipv6 route vrf (?P<vrf>\S+) (?P<dest>\S+) (?P<nexthop>\S+)
-  parent: route
-  key: uuid
+  grouping: implicit
 - match: 'monitor session (\d+) source interface (?P<source>.*?)(?: (?P<direction>both|tx|rx)|$)'
   parent: span
   actionall: expand
