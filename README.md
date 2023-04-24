@@ -17,6 +17,7 @@ A dissector is a YAML formatted nested list of dicts with any of these keys:
 | value | Specifies the value. Not to be used if only named groups are used. |
 | parent | Forces insertion of a parent dict using specified key. |
 | key | Force capture group with specified index as key or generate unique key by setting to uuid. |
+| grouping | Consider all named groups as a single branch. Not valid when 'child', 'name' or 'value' are used. |
 | action | Perform specified action on first capture group. Not valid when 'child' is used. |
 | actionall | Perform specified action on all named capture groups. |
 
@@ -32,6 +33,13 @@ Supported actions are:
 | cidr | Convert netmask to prefix length in IP address string |
 | cidr_l | Convert string to CIDR format and then to list unconditionally |
 | bool | Sets the value to False if the line starts with 'no' or else to True |
+
+Supported groupings are:
+
+| Value | Description |
+| --- | --- |
+| implicit | Create list of branches when key is duplicate. |
+| explicit | Create list of branches unconditionally. |
 
 Existing values are not overwritten but will be extended as lists.
 
