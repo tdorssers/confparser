@@ -230,13 +230,18 @@
 - match: router static
   name: static
   child:
-    match: vrf (\S+)
+  - match: address-family (\S+)
+    child:
+    - match: '([^! ]+)(?: vrf (?P<vrf>\S+))?(?: (?=[A-Tn])(?P<interface>\S+))?(?: (?=(?:\S*[\.:])+)(?P<nexthop>\S+))?(?: (?P<distance>\d+))?(?: tag (?P<tag>\d+))?(?: description "?(?P<description>[^"]*)"?)?(?: track (?P<track>\S+))?'
+      grouping: implicit
+  - match: vrf (\S+)
     parent: vrf
     child:
       match: address-family (\S+)
       parent: af
       child:
-        match: '([^! ]+)(?: vrf (?P<vrf>\S+))?(?: (?=[A-Tn])(?P<interface>\S+))?(?: (?=(?:\S*[\.:])+)(?P<nexthop>\S+))?(?: (?P<distance>\d+))?(?: description (?P<description>\S+))?'
+      - match: '([^! ]+)(?: vrf (?P<vrf>\S+))?(?: (?=[A-Tn])(?P<interface>\S+))?(?: (?=(?:\S*[\.:])+)(?P<nexthop>\S+))?(?: (?P<distance>\d+))?(?: tag (?P<tag>\d+))?(?: description "?(?P<description>[^"]*)"?)?(?: track (?P<track>\S+))?'
+        grouping: implicit
 - match: router bgp (?P<local_as>\d+)
   name: bgp
   child:
