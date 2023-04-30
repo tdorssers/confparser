@@ -4,6 +4,8 @@
   action: bool
 - match: ip domain name (?P<domain>\S+)
 - match: ip name-server (?P<name_server>\S+)
+- match: ip route (\S+) (?P<nexthop>\S+)
+  parent: route
 - match: vrf context (\S+)
   parent: vrf
   child:
@@ -58,15 +60,24 @@
   - match: encapsulation dot1q (?P<dot1q>\d+)
   - match: ip address (?P<ipv4>\S+)
   - match: vrf member (?P<vrf>\S+)
+  - match: bfd interval (?P<interval>\d+) min_rx (?P<min_rx>\d+) multiplier (?P<multiplier>\d+)
+    parent: bfd
   - match: (?:no )?ip redirects
     name: ipv4_redirects
     action: bool
+  - match: (?:no )?hsrp bfd
+    name: bfd
+    action: bool
+    parent: hsrp
+  - match: hsrp version (?P<version>\d+)
+    parent: hsrp
   - match: hsrp (\d+)
     name: hsrp
     child:
     - match: ip (?P<ipv4>\S+)
     - match: priority (?P<priority>\d+)
     - match: preempt$
+      value: true
     - match: preempt delay minimum (?P<delay_min>\d+)
       parent: preempt
     - match: timers (?P<hello>\d+) (?P<dead>\d+)
@@ -102,3 +113,66 @@
     name: passive
     action: bool
     parent: ospf
+  - match: (?:no )?ipv6 redirects
+    name: ipv6_redirects
+    action: bool
+- match: router ospf (?P<instance_tag>\S+)
+  name: ospf
+  child:
+  - match: router-id (?P<router_id>\S+)
+  - match: 'redistribute (\S+)(?: route-map (?P<route_map>\S+))?'
+    parent: redistribute
+  - match: passive-interface default
+    name: passive_default
+    value: true
+  - match: vrf (\S+)
+    parent: vrf
+    child:
+    - match: router-id (?P<router_id>\S+)
+    - match: 'redistribute (\S+)(?: route-map (?P<route_map>\S+))?'
+      parent: redistribute
+    - match: passive-interface default
+      name: passive_default
+      value: true
+- match: router bgp (?P<local_as>\d+)
+  name: bgp
+  child:
+  - match: bgp router-id (?P<router_id>\S+)
+  - match: address-family (\S+)
+    parent: af
+    child:
+    - match: network (?P<network>.*)
+    - match: 'redistribute (\S+)(?: route-map (?P<route_map>\S+))?'
+      parent: redistribute
+    - match: default-information originate
+      name: default_originate
+      value: true
+  - match: neighbor (\S+)
+    parent: neighbor
+    child:
+    - match: remote-as (?P<remote_as>.*)
+    - match: description (?P<description>.*)
+    - match: address-family (\S+)
+      parent: af
+  - match: vrf (\S+)
+    parent: vrf
+    child:
+    - match: address-family (\S+)
+      parent: af
+      child:
+      - match: network (?P<network>.*)
+      - match: 'redistribute (\S+)(?: route-map (?P<route_map>\S+))?'
+        parent: redistribute
+      - match: default-information originate
+        name: default_originate
+        value: true
+    - match: neighbor (\S+)
+      parent: neighbor
+      child:
+      - match: (?:no )?bfd
+        name: bfd
+        action: bool
+      - match: remote-as (?P<remote_as>.*)
+      - match: description (?P<description>.*)
+      - match: address-family (\S+)
+        parent: af
