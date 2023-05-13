@@ -272,6 +272,21 @@
 - match: 'ipv6 route(?: vrf (?P<vrf>\S+))? (\S+)(?: (?=[A-V])(?P<interface>\S+))?(?: (?=(?:\S*[\.:])+)(?P<nexthop>\S+))?(?: (?P<distance>\d+))?(?: tag (?P<tag>\d+))?(?: name "?(?P<name>[^"]*)"?)?(?: track (?P<track>\S+))?'
   parent: route
   grouping: implicit
+- match: ip sla (\d+)
+  parent: ipsla
+  child:
+    match: '(\S+) (?P<dest_ip>\S+)(?: (?P<dest_port>\d+))?(?: source-ip (?P<source_ip>\S+))?(?: source-port (?P<source_port>\S+))?(?: num-packets (?P<num_packets>\d+))?(?: interval (?P<interval>\d+))?'
+    parent: type
+    child:
+    - match: tos (?P<tos>\d+)
+    - match: vrf (?P<vrf>\S+)
+    - match: owner (?P<owner>.*)
+    - match: tag (?P<tag>\S+)
+    - match: threshold (?P<threshold>\d+)
+    - match: timeout (?P<timeout>\d+)
+    - match: frequency (?P<frequency>\d+)
+- match: 'ip sla schedule (\d+) (?:life (?P<life>forever|\d+))?(?: start-time (?P<start>(?:after |now|pending|random )?[:\d]*))?(?: ageout (?P<ageout>\d+))?'
+  parent: ipsla
 - match: 'monitor session (\d+) source interface (?P<source>.*?)(?: (?P<direction>both|tx|rx)|$)'
   parent: span
   actionall: expand
