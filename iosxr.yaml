@@ -382,3 +382,26 @@
         - match: bfd fast-detect
           name: bfd
           action: bool
+- match: ipsla
+  child:
+  - match: operation (\d+)
+    parent: op
+    child:
+      match: type (\S+) (?P<sub_type>\S+)
+      parent: type
+      child:
+      - match: tag (?P<tag>\S+)
+      - match: vrf (?P<vrf>\S+)
+      - match: source address (?P<source_ip>\S+)
+      - match: destination address (?P<dest_ip>\S+)
+      - match: packet count (?P<num_packets>\d+)
+      - match: packet interval (?P<interval>\d+)
+      - match: timeout (?P<timeout>\d+)
+      - match: tos (?P<tos>\d+)
+      - match: frequency (?P<frequency>\d+)
+  - match: schedule operation (\d+)
+    parent: op
+    child:
+    - match: start-time (?P<start>.*)
+    - match: life (?P<life>\S+)
+    - match: ageout (?P<ageout>\d+)
