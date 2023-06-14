@@ -1,7 +1,6 @@
 """
 Parse a block style document, such as Cisco configuration files, into a JSON
 formattable structure using dissectors.
-
 A dissector is a YAML formatted nested list of dicts with any of these keys:
 match    : A regular expression to match at the beginning of a line. The first
            unnamed capture group can be used as key or as value. Named capture
@@ -21,7 +20,6 @@ grouping : Consider all named groups as a single branch. Not valid when 'child',
 action   : Perform specified action on first unnamed capture group or on whole
            match if no capture group specified. Not valid when 'child' is used.
 actionall: Perform specified action on all named capture groups.
-
 Supported actions are:
 expand   : Convert number ranges with hyphens and commas into list of numbers
 expand_f : Convert Foundry-style port ranges into list of ports
@@ -32,17 +30,13 @@ cidr     : Convert netmask to prefix length in IP address string
 cidr_l   : Convert string to CIDR format and then to list unconditionally
 bool     : Sets the value to False if the line starts with 'no' or else to True
 decrypt7 : Decrypts a Cisco type 7 password
-
 Supported groupings are:
 implicit : Create list of branches when key is duplicate.
 explicit : Create list of branches unconditionally.
-
 Existing values are not overwritten but will be extended as lists.
-
 Default parameters allow parsing of most configuration files.
 To parse NXOS use indent=2
 To parse VSP use indent=0, eob='exit'
-
 The Dissector class returns a Tree object which is a nested dict with attributes
 that reference the dissector and source file used. A dissector can be created
 from a string or a file and can parse an iterable, a string or a file. Multiple
@@ -183,6 +177,27 @@ class AutoDissector(object):
                         return tree
         if self.raise_no_match:
             raise ValueError('None of the hints matched file %s' % filename)
+        return None
+
+    def from_string(self, string):
+        """ Return Tree object from matching parser for given file """
+        # Look for hint in first few lines of the file
+        for line in itertools.islice(string, 40):
+            for parser, param in self.parsers.items():
+                m = param['hint'].search(line)
+                if m:
+                    #string.seek(0)
+                    if 'function' in param:
+                        # Apply function to iterable f
+                        tree = parser.parse(param['function'](iter(string)), 
+                                            **param['kwargs'])
+											
+                    else:
+                        tree = parser.parse(iter(string), **param['kwargs'])
+                    tree.source = string  # Save source filename
+                    return tree
+        if self.raise_no_match:
+            raise ValueError('None of the hints matched file')
         return None
 
 
