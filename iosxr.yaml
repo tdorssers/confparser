@@ -264,14 +264,7 @@
         child:
           match: vpn-id (?P<vpn_id>\d+)
           match: (\S+)
-
           match: (\S+) (?P<neighbor_ip>\S+) pw-id (?P<pw_id>\d+)
-          #parent: neighbor 
-          #action: listall
-          #child:
-          #  match: \s*(?P<neighbor_ip>\S+) pw-id (?P<pw_id>\d+)
-          #  actionall: list
-
       - match: routed interface (\S+)
         parent: routed_interface
         child:
