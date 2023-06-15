@@ -162,7 +162,7 @@
             child:
               - match: mep-id (?P<mep>\S+)
                 #actionall: list
-      - match: service (\S+) bridge group (?P<xconnect_group>\S+) bridge-domain (?P<xconnect>\S+)
+      - match: service (\S+) bridge group (?P<bridge_group>\S+) bridge-domain (?P<bridge_domain>\S+)
         parent: service
         child:
           #- match: (?P<remote_mep>\S+) crosscheck
