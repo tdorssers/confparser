@@ -14,10 +14,12 @@ name     : Specifies the key name. If omitted, the first capture group or whole
            match is used as a key. Not to be used if only named groups are used.
 value    : Specifies the value. Not to be used if only named groups are used.
 parent   : Forces insertion of a parent dict using specified key.
-key      : Force capture group with specified index as key or generate unique
-           key by setting to uuid.
 grouping : Consider all named groups as a single branch. Not valid when 'child',
            'name' or 'value' are used.
+key      : Index of unnamed group as root of tree of unnamed groups. Named
+           capture groups are added as leaves. 'action' is applied to the root.
+           'actionall' is applied to other groups. 'child', 'name', 'value' and
+           'grouping' are ignored.
 action   : Perform specified action on first unnamed capture group or on whole
            match if no capture group specified. Not valid when 'child' is used.
 actionall: Perform specified action on all named capture groups.
@@ -55,7 +57,6 @@ dissector to a file. A hint is a regular expression that is unique to the first
 
 import re
 import json
-import uuid
 import itertools
 import ipaddress
 import yaml
@@ -170,8 +171,7 @@ class AutoDissector(object):
             # Look for hint in first few lines of the file
             for line in itertools.islice(f, 23):
                 for parser, param in self.parsers.items():
-                    m = param['hint'].search(line)
-                    if m:
+                    if param['hint'].search(line):
                         f.seek(0)
                         if 'function' in param:
                             # Apply function to iterable f
@@ -183,6 +183,24 @@ class AutoDissector(object):
                         return tree
         if self.raise_no_match:
             raise ValueError('None of the hints matched file %s' % filename)
+        return None
+
+    def from_str(self, string):
+        """ Return Tree object from matching parser for given string """
+        # Look for hint in first few lines of the string
+        for match in itertools.islice(re.finditer(r'.*', string), 23):
+            for parser, param in self.parsers.items():
+                if param['hint'].search(match.group()):
+                    lines = iter(string.splitlines())
+                    if 'function' in param:
+                        # Apply function to iterable f
+                        tree = parser.parse(param['function'](lines),
+                                            **param['kwargs'])
+                    else:
+                        tree = parser.parse(lines, **param['kwargs'])
+                    return tree
+        if self.raise_no_match:
+            raise ValueError('None of the hints matched')
         return None
 
 
@@ -223,23 +241,39 @@ def _parse(lines, context, indent=1, eob=None):
             # Apply specified action to found named capturing group values
             named_groups = {k: _action(item.get('actionall'), v)
                             for k, v in m.groupdict().items() if v is not None}
-            # Use whole match as key if no groups match
-            key = m.group(0) if not m.lastindex else None
-            if m.re.groups > len(m.re.groupindex):
-                # An unnamed group exists, use first unnamed group as key
-                key = m.group(next(x for x in itertools.count(1)
-                                   if x not in m.re.groupindex.values()))
             if 'parent' in item:
                 # Insert specified parent Tree object and retain reference
                 p_result = r_stack[-1][item['parent']]
             else:
                 p_result = r_stack[-1]
             if 'key' in item:
-                # Use group with specified index as key
-                if item['key'] == 'uuid':
-                    key = str(uuid.uuid4())  # Use random unique ID as key
-                elif item['key'] in range(m.re.groups + 1):
-                    key = m.group(item['key'])
+                # Use specified unnamed group as root in nested dict
+                tree = named_groups
+                for idx in range(m.re.groups, 0, -1):
+                    if idx in m.re.groupindex.values() or idx == item['key']:
+                        continue
+                    key = _action(item.get('actionall'), m.group(idx))
+                    key = [key] if not isinstance(key, list) else key
+                    # Last unnamed group as value and others as nested dict
+                    tree = {k: tree for k in key} if tree else key[0]
+                # Apply specified action to root and add to Tree
+                key = _action(item.get('action'), m.group(item['key']))
+                for k in [key] if not isinstance(key, list) else key:
+                    if isinstance(tree, dict):
+                        p_result[k].merge_retain(tree)
+                    else:
+                        # Add single value to Tree
+                        if k not in p_result:
+                            p_result[k] = tree
+                        else:
+                            p_result[k].merge_retain({tree: {}})
+                continue
+            # Use whole match as key if no groups match
+            key = m.group(0) if not m.lastindex else None
+            if m.re.groups > len(m.re.groupindex):
+                # An unnamed group exists, use first unnamed group as key
+                key = m.group(next(x for x in itertools.count(1)
+                                   if x not in m.re.groupindex.values()))
             if 'child' in item:
                 # Override key by name if specified and apply group action
                 key = _action(item.get('action'), item.get('name', key))

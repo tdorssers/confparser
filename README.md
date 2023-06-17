@@ -16,8 +16,8 @@ A dissector is a YAML formatted nested list of dicts with any of these keys:
 | name | Specifies the key name. If omitted, the first capture group or whole match is used as a key. Not to be used if only named groups are used. |
 | value | Specifies the value. Not to be used if only named groups are used. |
 | parent | Forces insertion of a parent dict using specified key. |
-| key | Force capture group with specified index as key or generate unique key by setting to uuid. |
 | grouping | Consider all named groups as a single branch. Not valid when 'child', 'name' or 'value' are used. |
+| key | Index of unnamed group as root of tree of unnamed groups. Named capture groups are added as leaves. 'action' is applied to the root. 'actionall' is applied to other groups. 'child', 'name', 'value' and 'grouping' are ignored. |
 | action | Perform specified action on first capture group. Not valid when 'child' is used. |
 | actionall | Perform specified action on all named capture groups. |
 
@@ -80,6 +80,9 @@ Register Dissector object with hint regex and parser keyword arguments with func
 
 `confparser.AutoDissector.from_file(filename)`
 Return a new Tree object from matching parser for specified file *filename*. Raises *ValueError* when no matching parser is found.
+
+`confparser.AutoDissector.from_str(string)`
+Return a new Tree object from matching parser for specified string. Raises *ValueError* when no matching parser is found.
 
 `confparser.Tree(parent=None)`
 Subclass of *dict*. Return a new Tree object.
