@@ -136,6 +136,12 @@
       - match: transmit disable
         name: tx
         value: false
+  - match: ethernet cfm
+    child:
+      - match: (\S+) domain (?P<domain>\S+) service (?P<service>\S+) mep-id (?P<local_mep>\S+)
+        child:
+          - match: sla operation profile (?P<sla_profile>\S+) target mep-id (\S+)
+            parent: remote_mep
   - match: arp timeout (?P<arp_timeout>\d+)
   - match: 'monitor-session (\S+) ethernet(?: direction (?P<direction>\S+))?'
     parent: monitor_session
@@ -143,8 +149,35 @@
       match: acl
       name: acl
       value: true
+- match: ethernet cfm
+  child:
+    match: domain (\S+) level (?P<level>\S+)
+    parent: domain
+    child:
+      - match: service (\S+) xconnect group (?P<xconnect_group>\S+) p2p (?P<xconnect>\S+)
+        parent: service
+        child:
+          - match: mep (\S+)
+            child:
+              - match: mep-id (?P<mep>\S+)
+      - match: service (\S+) bridge group (?P<bridge_group>\S+) bridge-domain (?P<bridge_domain>\S+)
+        parent: service
+        child:
+          - match: mep (\S+)
+            child:
+              - match: mep-id (?P<mep>\S+)
 - match: route-policy (\S+)
   parent: route_policy
+  child:
+    match: \s*(?P<lines>.*)
+    actionall: list
+- match: prefix-set (\S+)
+  parent: prefix_set
+  child:
+    match: \s*(?P<lines>.*)
+    actionall: list
+- match: as-path-set (\S+)
+  parent: as_path_set
   child:
     match: \s*(?P<lines>.*)
     actionall: list
@@ -182,8 +215,14 @@
       - match: interface (?P<interface>\S+)
         actionall: list
       - match: monitor-session (?P<monitor_session>\S+)
-      - match: neighbor ipv[46] (\S+) pw-id (?P<pw_id>\d+)
-        parent: neighbor
+      - match: (\S+) ipv[46] (?P<neighbor_ip>\S+) pw-id (?P<pw_id>\d+)
+        child:
+        - match: pw-class (?P<pw_class>\S+) 
+        - match: backup neighbor (?P<neighbor_ip>\S+) pw-id (?P<pw_id>\d+)
+          parent: backup_neighbor
+        - match:  \spw-class (?P<pw_class>\S+)
+          parent: backup_neighbor
+
       - match: neighbor evpn evi (\d+) target (?P<target>\d+) source (?P<source>\d+)
         parent: evi
   - match: bridge group (\S+)
@@ -220,6 +259,8 @@
         parent: vfi
         child:
           match: vpn-id (?P<vpn_id>\d+)
+          match: (\S+)
+          match: (\S+) (?P<neighbor_ip>\S+) pw-id (?P<pw_id>\d+)
       - match: routed interface (\S+)
         parent: routed_interface
         child:
@@ -277,6 +318,8 @@
     - match: default-information originate
       name: default_originate
       value: true
+    - match: rd (\S+)
+      name: rd
     - match: address-family (\S+) unicast
       parent: af
       child:
@@ -289,6 +332,7 @@
       parent: neighbor
       child:
       - match: remote-as (?P<remote_as>\S+)
+      - match: ebgp-multihop (?P<ebgp_multihop>\S+)
       - match: local-as (?P<local_as>\S+)
       - match: bfd minimum-interval (?P<bfd_int>\d+)
       - match: bfd multiplier (?P<bfd_mul>\d+)
