@@ -1,3 +1,4 @@
+- match: version (?P<version>\S+)
 - match: hostname (?P<hostname>\S+)
 - match: (?:no )?feature lldp
   name: lldp_run
@@ -6,6 +7,15 @@
 - match: ip name-server (?P<name_server>\S+)
 - match: ip route (\S+) (?P<nexthop>\S+)
   parent: route
+- match: callhome
+  name: call_home
+  child:
+  - match: destination-profile (\S+) transport-method (?P<transport>\S+)
+    parent: profile
+  - match: transport http proxy server (?P<http_proxy>.*?) port (?P<proxy_port>\d+)
+  - match: (?:no )?enable
+    name: enable
+    action: bool
 - match: vrf context (\S+)
   parent: vrf
   child:

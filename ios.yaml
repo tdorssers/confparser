@@ -19,7 +19,14 @@
 - match: call-home
   name: call_home
   child:
-    match: http-proxy "(?P<http_proxy>.*?)" port (?P<port>\d+)
+  - match: http-proxy "(?P<http_proxy>.*?)" port (?P<proxy_port>\d+)
+  - match: profile "(.*?)"
+    parent: profile
+    child:
+    - match: (?:no )?active
+      name: active
+      action: bool
+    - match: destination transport-method (?P<transport>\S+)
 - match: (?P<igmp_snoop>(?:no )?ip igmp snooping vlan) (\d+)
   parent: vlan_conf
   actionall: bool
@@ -48,7 +55,7 @@
 - match: class-map match-(?P<match>\S+) (?!system-cpp)(\S+)
   parent: class_map
   child:
-    match: \s*(?P<lines>.*)
+    match: \s*(?P<lines>match vlan.*)
     actionall: list
 - match: policy-map (?!system-cpp)(\S+)
   parent: policy_map
@@ -65,6 +72,20 @@
   - match: (?:no )?switchport$
     name: switchport
     action: bool
+  - match: switchport access vlan (?P<access_vlan>\d+)
+  - match: switchport trunk native vlan (?P<native_vlan>\d+)
+  - match: switchport trunk allowed vlan (?!add)(\S+)
+    name: allowed_vlan
+    action: expand
+  - match: switchport trunk allowed vlan add (\S+)
+    name: allowed_vlan
+    action: expand
+  - match: switchport mode (?P<mode>\S+)
+  - match: switchport nonegotiate
+    name: dtp
+    value: false
+  - match: switchport voice vlan (?P<voice_vlan>\d+)
+  - match: mtu (?P<mtu>\d+)
   - match: encapsulation dot1Q (?P<dot1q>\d+)
   - match: (?:ip )?vrf forwarding (?P<vrf>\S+)
   - match: ip address (?!.*secondary)(?P<ipv4>.*)
@@ -74,37 +95,56 @@
   - match: no ip address
     name: ipv4
     value: false
+  - match: ip helper-address (\S+)
+    action: list
+    name: ipv4_helper
   - match: (?:no )?ip redirects
     name: ipv4_redirects
-    action: bool
-  - match: (?:no )?ip proxy-arp
-    name: ipv4_proxy_arp
     action: bool
   - match: (?:no )?ip unreachables
     name: ipv4_unreachables
     action: bool
-  - match: ip helper-address (\S+)
-    action: list
-    name: ipv4_helper
-  - match: standby (\d+) ip (?P<ip>\S+)
-    parent: standby
-  - match: standby (\d+) priority (?P<priority>\d+)
-    parent: standby
-  - match: standby (\d+) preempt(?P<preempt>.*)$
-    parent: standby
-  - match: standby (\d+) preempt delay minimum (?P<preempt_delay_min>\d+)
-    parent: standby
-  - match: standby (\d+) timers (?P<hello>\d+) (?P<dead>\d+)
-    parent: standby
-  - match: standby (\d+) authentication md5 key-string 7 (?P<auth_md5>\S+)
-    parent: standby
-    actionall: decrypt7
+  - match: ip directed-broadcast ?(?P<ipv4_dir_bcast>.*)
+  - match: (?:no )?ip proxy-arp
+    name: ipv4_proxy_arp
+    action: bool
   - match: ip pim (?P<ip_pim>.*-mode)
   - match: ip access-group (?P<ingress>\S+) in
     parent: ipv4_acl
   - match: ip access-group (?P<egress>\S+) out
     parent: ipv4_acl
-  - match: ip directed-broadcast ?(?P<ipv4_dir_bcast>.*)
+  - match: standby version (?P<version>\d)
+    parent: standby
+  - match: standby (\d+) (ip|ipv6|priority) (\S+)
+    parent: standby
+    key: 1
+  - match: 'standby(?: (\d+))? (preempt)(?: delay minimum (?P<delay>\d+))?(?: reload (?P<reload>\d+))?'
+    parent: standby
+  - match: 'standby (\d+) (track) (\d+)(?: (\S+))?(?: (\d+))?'
+    parent: standby
+    key: 1
+  - match: standby (\d+) timers (?P<hello>\d+) (?P<dead>\d+)
+    parent: standby
+  - match: standby (\d+) authentication md5 key-string 7 (?P<auth_md5>\S+)
+    parent: standby
+    actionall: decrypt7
+  - match: logging event (\S+)
+    parent: logging
+    value: true
+  - match: no logging event (\S+)
+    parent: logging
+    value: false
+  - match: carrier-delay (?P<carrier_delay>\d+)
+  - match: (?:no )?shutdown
+    name: shutdown
+    action: bool
+  - match: power inline (?P<power_inline>.*)
+  - match: speed (?P<speed>.*)
+    actionall: split
+  - match: duplex (?P<duplex>.*)
+  - match: (?:no )?cdp enable
+    name: cdp_enable
+    action: bool
   - match: ipv6 address (?P<ipv6>\S+)
   - match: ipv6 nd (?P<ipv6_nd>.*)
   - match: (?:no )?ipv6 redirects
@@ -114,72 +154,43 @@
     parent: ipv6_acl
   - match: ipv6 traffic-filter (?P<egress>\S+) out
     parent: ipv6_acl
-  - match: standby (\d+) ipv6 (?P<ipv6>\S+)
-    parent: standby
-  - match: bfd interval (?P<interval>\d+) min_rx (?P<min_rx>\d+) multiplier (?P<multiplier>\d+)
-    parent: bfd
-  - match: mtu (?P<mtu>\d+)
-  - match: carrier-delay (?P<carrier_delay>\d+)
-  - match: (?:no )?shutdown
-    name: shutdown
+  - match: (?:no )?snmp trap link-status
+    name: link_trap
     action: bool
-  - match: (?:no )?cdp enable
-    name: cdp_enable
-    action: bool
+  - match: dot1x pae (?P<dot1x_pae>\S+)
+  - match: cts manual
+    child:
+      match: policy static sgt (\d+)
+      name: sgt
+  - match: storm-control action (?P<action>\S+)
+    parent: storm_control
+  - match: storm-control (\S+) level (?:(?P<level>[\d\.]+) ?(?P<level_low>[\d\.]+)?|(?:pps (?P<pps>\S+) ?(?P<pps_low>\S+)?)|(?:bps (?P<bps>\S+) ?(?P<bps_low>\S+)?))
+    parent: storm_control
   - match: (?:no )?lldp transmit
     name: lldp_tx
     action: bool
   - match: (?:no )?lldp receive
     name: lldp_rx
     action: bool
-  - match: switchport trunk allowed vlan (?!add)(\S+)
-    name: allowed_vlan
-    action: expand
-  - match: switchport trunk allowed vlan add (\S+)
-    name: allowed_vlan
-    action: expand
-  - match: switchport trunk native vlan (?P<native_vlan>\d+)
-  - match: switchport mode (?P<mode>\S+)
-  - match: switchport access vlan (?P<access_vlan>\d+)
-  - match: switchport voice vlan (?P<voice_vlan>\d+)
-  - match: switchport nonegotiate
-    name: dtp
-    value: false
+  - match: bfd interval (?P<interval>\d+) min_rx (?P<min_rx>\d+) multiplier (?P<multiplier>\d+)
+    parent: bfd
+  - match: (?:no )?bfd echo
+    parent: bfd
+    name: echo
+    action: bool
   - match: channel-group (?P<id>\d+) mode (?P<mode>\S+)
     parent: channel
-  - match: (?:no )?snmp trap link-status
-    name: link_trap
-    action: bool
-  - match: logging event (\S+)
-    parent: logging
-    value: true
-  - match: no logging event (\S+)
-    parent: logging
-    value: false
-  - match: cts manual
-    child:
-      match: policy static sgt (\d+)
-      name: sgt
-  - match: power inline (?P<power_inline>.*)
-  - match: speed (?P<speed>.*)
-    actionall: split
-  - match: duplex (?P<duplex>.*)
-  - match: spanning-tree bpdufilter (?P<stp_bpdufilter>.*)
-  - match: spanning-tree bpduguard (?P<stp_bpduguard>.*)
   - match: spanning-tree portfast(?:(?!trunk).)*$
     name: stp_portfast
     value: enable
   - match: spanning-tree portfast.*(?P<stp_portfast>trunk)
+  - match: spanning-tree bpdufilter (?P<stp_bpdufilter>.*)
+  - match: spanning-tree bpduguard (?P<stp_bpduguard>.*)
+  - match: lacp rate (?P<lacp_rate>\S+)
   - match: service-policy input (?P<ingress>\S+)
     parent: service_policy
   - match: service-policy output (?P<egress>\S+)
     parent: service_policy
-  - match: dot1x pae (?P<dot1x_pae>\S+)
-  - match: lacp rate (?P<lacp_rate>\S+)
-  - match: storm-control action (?P<action>\S+)
-    parent: storm_control
-  - match: storm-control (\S+) level (?:(?P<level>[\d\.]+) ?(?P<level_low>[\d\.]+)?|(?:pps (?P<pps>\S+) ?(?P<pps_low>\S+)?)|(?:bps (?P<bps>\S+) ?(?P<bps_low>\S+)?))
-    parent: storm_control
 - match: router bgp (?P<local_as>\d+)
   name: bgp
   child:

@@ -1,3 +1,4 @@
+- match: '# box type\s+: (?P<model>\S+)'
 - match: prompt "?(?P<hostname>[^"]*)"?
 - match: vlan create (\d+) name "(?P<name>.*?)"
   parent: vlan

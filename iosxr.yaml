@@ -81,8 +81,7 @@
   child:
   - match: description (?P<description>.*)
   - match: encapsulation (?P<dot1q>untagged)
-  - match: encapsulation dot1q (?P<dot1q>\d+)$
-  - match: encapsulation dot1q (?P<dot1q>\d+) second-dot1q (?P<second_dot1q>\d+)
+  - match: 'encapsulation dot1q (?P<dot1q>\d+)(?: second-dot1q (?P<second_dot1q>\d+))?'
   - match: mtu (?P<mtu>\d+)
   - match: service-policy input (?P<input>\S+)
     parent: policy
@@ -149,6 +148,9 @@
       match: acl
       name: acl
       value: true
+  - match: 'flow (\S+) monitor (?P<monitor>\S+)(?: sampler (?P<sampler>\S+))? (?P<direction>\S+)'
+    parent: flow
+    grouping: implicit
 - match: ethernet cfm
   child:
     match: domain (\S+) level (?P<level>\S+)
@@ -215,14 +217,14 @@
       - match: interface (?P<interface>\S+)
         actionall: list
       - match: monitor-session (?P<monitor_session>\S+)
-      - match: (\S+) ipv[46] (?P<neighbor_ip>\S+) pw-id (?P<pw_id>\d+)
+      - match: neighbor ipv[46] (\S+) pw-id (?P<pw_id>\d+)
+        parent: neighbor
         child:
         - match: pw-class (?P<pw_class>\S+) 
-        - match: backup neighbor (?P<neighbor_ip>\S+) pw-id (?P<pw_id>\d+)
+        - match: backup neighbor (\S+) pw-id (?P<pw_id>\d+)
           parent: backup_neighbor
-        - match:  \spw-class (?P<pw_class>\S+)
-          parent: backup_neighbor
-
+          child:
+            match: pw-class (?P<pw_class>\S+)
       - match: neighbor evpn evi (\d+) target (?P<target>\d+) source (?P<source>\d+)
         parent: evi
   - match: bridge group (\S+)
@@ -258,9 +260,9 @@
       - match: vfi (\S+)
         parent: vfi
         child:
-          match: vpn-id (?P<vpn_id>\d+)
-          match: (\S+)
-          match: (\S+) (?P<neighbor_ip>\S+) pw-id (?P<pw_id>\d+)
+        - match: vpn-id (?P<vpn_id>\d+)
+        - match: neighbor (\S+) pw-id (?P<pw_id>\d+)
+          parent: neighbor
       - match: routed interface (\S+)
         parent: routed_interface
         child:
@@ -449,3 +451,19 @@
     - match: start-time (?P<start>.*)
     - match: life (?P<life>\S+)
     - match: ageout (?P<ageout>\d+)
+- match: flow exporter-map (\S+)
+  parent: flow_exp
+  child:
+  - match: transport udp (?P<transport>\d+)
+  - match: source (?P<source>\S+)
+  - match: 'destination (?P<dest>\S+)(?: vrf (?P<vrf>\S+))?'
+  - match: version (?P<version>\S+)
+- match: flow monitor-map (\S+)
+  parent: flow_mon
+  child:
+  - match: record (?P<record>\S+)
+  - match: exporter (?P<exporter>\S+)
+- match: sampler-map (\S+)
+  parent: flow_sam
+  child:
+    match: random 1 out-of (?P<interval>\d+)

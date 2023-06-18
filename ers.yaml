@@ -1,3 +1,6 @@
+- search: 'odel = \D+ (?P<model>\S+)'
+- match: '!\d\s+(?P<stack>\S+\d{2}[FGT]\S*)'
+  actionall: list
 - match: snmp-server name "(?P<hostname>.*?)"
 - match: vlan create (\S+)
   parent: vlan
@@ -61,6 +64,9 @@
   action: expand
   actionall: bool
   parent: interface
+#- match: no lldp port (\S+) status(?P<lldp_status>$)
+#  action: expand
+#  parent: interface
 - match: lldp port (\S+) status (?P<lldp_status>\S+)
   action: expand
   parent: interface
