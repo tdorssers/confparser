@@ -263,10 +263,10 @@ def _parse(lines, context, indent=1, eob=None):
                         p_result[k].merge_retain(tree)
                     else:
                         # Add single value to Tree
-                        if k not in p_result:
-                            p_result[k] = tree
-                        else:
+                        if k in p_result and isinstance(p_result[k], Tree):
                             p_result[k].merge_retain({tree: {}})
+                        else:
+                            p_result.merge_retain({k: tree})
                 continue
             # Use whole match as key if no groups match
             key = m.group(0) if not m.lastindex else None
