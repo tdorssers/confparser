@@ -27,10 +27,22 @@
       name: active
       action: bool
     - match: destination transport-method (?P<transport>\S+)
-- match: (?P<igmp_snoop>(?:no )?ip igmp snooping vlan) (\d+)
-  parent: vlan_conf
+- match: (?:no )?ip igmp snooping$
+  name: igmp_snoop
+  action: bool
+- match: (?P<igmp_snoop>(?:no )?ip igmp snooping) vlan (\d+)$
+  parent: igmp_vlan
   actionall: bool
+- match: (?P<immediate_leave>(?:no )?ip igmp snooping) vlan (\d+) immediate-leave
+  parent: igmp_vlan
+  actionall: bool
+- match: ip igmp snooping vlan (\d+) mrouter interface (?P<mrouter>\S+)
+  parent: igmp_vlan
 - match: vtp mode (?P<vtp_mode>\S+)
+- match: spanning-tree vlan (\S+) (\S+) (\d+)
+  parent: pvst
+  action: expand
+  key: 1
 - match: vlan group (\S+) vlan-list (?P<vlan_list>\S+)
   parent: vlan_group
   actionall: expand
@@ -63,8 +75,9 @@
     match: class (\S+)
     parent: class
     child:
-      match: 'set (?:ip )?(\S+) (?P<marking>\S+)(?: table (?P<table_map>\S+))?'
+    - match: 'set (?:ip )?(\S+) (?P<marking>\S+)(?: table (?P<table_map>\S+))?'
       parent: set
+    - match: queue-buffers ratio (?P<queue_ratio>\d+)
 - match: interface (\S+)
   parent: interface
   child:
@@ -109,10 +122,9 @@
     name: ipv4_proxy_arp
     action: bool
   - match: ip pim (?P<ip_pim>.*-mode)
-  - match: ip access-group (?P<ingress>\S+) in
+  - match: ip access-group (\S+) (in|out)
     parent: ipv4_acl
-  - match: ip access-group (?P<egress>\S+) out
-    parent: ipv4_acl
+    key: 2
   - match: standby version (?P<version>\d)
     parent: standby
   - match: standby (\d+) (ip|ipv6|priority) (\S+)
@@ -128,12 +140,10 @@
   - match: standby (\d+) authentication md5 key-string 7 (?P<auth_md5>\S+)
     parent: standby
     actionall: decrypt7
-  - match: logging event (\S+)
+  - match: ((?:no )?logging event) (\S+)
     parent: logging
-    value: true
-  - match: no logging event (\S+)
-    parent: logging
-    value: false
+    actionall: bool
+    key: 2
   - match: carrier-delay (?P<carrier_delay>\d+)
   - match: (?:no )?shutdown
     name: shutdown
@@ -154,6 +164,9 @@
     parent: ipv6_acl
   - match: ipv6 traffic-filter (?P<egress>\S+) out
     parent: ipv6_acl
+  - match: (?:no )?authentication open
+    name: monitor_mode
+    action: bool
   - match: (?:no )?snmp trap link-status
     name: link_trap
     action: bool
@@ -180,6 +193,10 @@
     action: bool
   - match: channel-group (?P<id>\d+) mode (?P<mode>\S+)
     parent: channel
+  - match: spanning-tree vlan (\S+) (\S+) (\d+)
+    parent: stp_vlan
+    key: 1
+    action: expand
   - match: spanning-tree portfast(?:(?!trunk).)*$
     name: stp_portfast
     value: enable

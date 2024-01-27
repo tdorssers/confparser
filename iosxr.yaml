@@ -82,6 +82,7 @@
   - match: description (?P<description>.*)
   - match: encapsulation (?P<dot1q>untagged)
   - match: 'encapsulation dot1q (?P<dot1q>\d+)(?: second-dot1q (?P<second_dot1q>\d+))?'
+  - match: rewrite ingress tag pop (?P<pop>\d) symmetric
   - match: mtu (?P<mtu>\d+)
   - match: service-policy input (?P<input>\S+)
     parent: policy
