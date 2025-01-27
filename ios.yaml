@@ -39,6 +39,9 @@
 - match: ip igmp snooping vlan (\d+) mrouter interface (?P<mrouter>\S+)
   parent: igmp_vlan
 - match: vtp mode (?P<vtp_mode>\S+)
+- match: 'license boot level (?P<level>\S+)(?: addon (?P<addon>\S+))'
+  parent: license
+- match: spanning-tree mode (?P<stp_mode>\S+)
 - match: spanning-tree vlan (\S+) (\S+) (\d+)
   parent: pvst
   action: expand
@@ -219,16 +222,26 @@
   - match: neighbor (\S+) password 7 (?P<password>\S+)
     parent: neighbor
     actionall: decrypt7
-  - match: neighbor (\S+) fall-over bfd
+  - match: neighbor (\S+) fall-over (?P<fall_over>bfd)
     parent: neighbor
-    name: bfd
-    action: bool
-  - match: neighbor (\S+) route-map (?P<route_map_in>\S+) in
+  - match: neighbor (\S+) local-as (?P<local_as>\d+)
     parent: neighbor
-  - match: neighbor (\S+) route-map (?P<route_map_out>\S+) out
+  - match: neighbor (\S+) route-map (?P<rmap_in>\S+) in
+    parent: neighbor
+  - match: neighbor (\S+) route-map (?P<rmap_out>\S+) out
+    parent: neighbor
+  - match: neighbor (\S+) update-source (?P<update_source>\S+)
+    parent: neighbor
+  - match: neighbor (\S+) inherit peer-policy (?P<peer_policy>.*)
     parent: neighbor
   - match: neighbor (\S+) inherit peer-session (?P<peer_session>.*)
     parent: neighbor
+  - match: template peer-policy (\S+)
+    parent: peer_policy
+    child:
+    - match: maximum-prefix (?P<max_prefix>\d+)
+    - match: route-map (?P<rmap_in>\S+) in
+    - match: route-map (?P<rmap_out>\S+) out
   - match: template peer-session (\S+)
     parent: peer_session
     child:
@@ -237,16 +250,25 @@
     - match: password 7 (?P<password>\S+)
       actionall: decrypt7
     - match: fall-over (?P<fall_over>bfd)
-  - match: address-family ipv4$
-    name: af_ipv4
+    - match: update-source (?P<update_source>\S+)
+    - match: local-as (?P<local_as>\d+)
+  - match: address-family (\S+)$
+    parent: af
     child:
+    - match: maximum-prefix (?P<max_prefix>\d+)
+    - match: neighbor (\S+) route-map (?P<rmap_in>\S+) in
+      parent: neighbor
+    - match: neighbor (\S+) route-map (?P<rmap_out>\S+) out
+      parent: neighbor
+    - match: neighbor (\S+) inherit peer-policy (?P<peer_policy>.*)
+      parent: neighbor
     - match: redistribute (\S+)
       name: redistribute
     - match: default-information originate
       name: default_originate
       value: true
   - match: address-family ipv4 vrf (\S+)
-    parent: af_ipv4_vrf
+    parent: vrf
     child:
     - match: network (?P<network>.*)
     - match: neighbor (\S+) description (?P<description>.*)
@@ -258,9 +280,15 @@
       actionall: decrypt7
     - match: neighbor (\S+) fall-over (?P<fall_over>bfd)
       parent: neighbor
-    - match: neighbor (\S+) route-map (?P<route_map_in>\S+) in
+    - match: neighbor (\S+) local-as (?P<local_as>\d+)
       parent: neighbor
-    - match: neighbor (\S+) route-map (?P<route_map_out>\S+) out
+    - match: neighbor (\S+) route-map (?P<rmap_in>\S+) in
+      parent: neighbor
+    - match: neighbor (\S+) route-map (?P<rmap_out>\S+) out
+      parent: neighbor
+    - match: neighbor (\S+) update-source (?P<update_source>\S+)
+      parent: neighbor
+    - match: neighbor (\S+) inherit peer-policy (?P<peer_policy>.*)
       parent: neighbor
     - match: neighbor (\S+) inherit peer-session (?P<peer_session>.*)
       parent: neighbor
@@ -270,7 +298,7 @@
       name: default_originate
       value: true
   - match: address-family ipv6 vrf (\S+)
-    parent: af_ipv6_vrf
+    parent: ipv6_vrf
     child:
     - match: network (?P<network>.*)
     - match: neighbor (\S+) description (?P<description>.*)
@@ -282,9 +310,15 @@
       actionall: decrypt7
     - match: neighbor (\S+) fall-over (?P<fall_over>bfd)
       parent: neighbor
-    - match: neighbor (\S+) route-map (?P<route_map_in>\S+) in
+    - match: neighbor (\S+) local-as (?P<local_as>\d+)
       parent: neighbor
-    - match: neighbor (\S+) route-map (?P<route_map_out>\S+) out
+    - match: neighbor (\S+) route-map (?P<rmap_in>\S+) in
+      parent: neighbor
+    - match: neighbor (\S+) route-map (?P<rmap_out>\S+) out
+      parent: neighbor
+    - match: neighbor (\S+) update-source (?P<update_source>\S+)
+      parent: neighbor
+    - match: neighbor (\S+) inherit peer-policy (?P<peer_policy>.*)
       parent: neighbor
     - match: neighbor (\S+) inherit peer-session (?P<peer_session>.*)
       parent: neighbor
@@ -300,6 +334,11 @@
 - match: 'ipv6 route(?: vrf (?P<vrf>\S+))? (\S+)(?: (?=[A-V])(?P<interface>\S+))?(?: (?=(?:\S*[\.:])+)(?P<nexthop>\S+))?(?: (?P<distance>\d+))?(?: tag (?P<tag>\d+))?(?: name "?(?P<name>[^"]*)"?)?(?: track (?P<track>\S+))?'
   parent: route
   grouping: implicit
+- match: ip access-list extended (\S+)
+  parent: ipv4_acl
+  child:
+  - match: (?:\d+\s+)?(?P<lines>.*)
+    actionall: list
 - match: ip sla (\d+)
   parent: ipsla
   child:
@@ -318,9 +357,25 @@
 - match: 'monitor session (\d+) source interface (?P<source>.*?)(?: (?P<direction>both|tx|rx)|$)'
   parent: span
   actionall: expand
-- match: 'monitor session (\d+) destination interface (?P<dest>.*?)(?: encapsulation (?P<egress_encap>\S+))?(?: ingress (?P<ingress_encap>\S+ )?vlan (?P<ingress_vlan>\d+))?$'
+- match: 'monitor session (\d+) destination interface (?P<destination>.*?)(?: encapsulation (?P<egress_encap>\S+))?(?: ingress (?P<ingress_encap>\S+ )?vlan (?P<ingress_vlan>\d+))?$'
   parent: span
   actionall: expand
+- match: monitor session (\d+) type (?P<type>\S+)
+  parent: span
+  child:
+  - match: description (?P<description>.*)
+  - match: 'source interface (.*?)(?: (?P<direction>both|tx|rx)|$)'
+    parent: interface
+    action: expand
+  - match: 'destination interface (.*?)(?: (?P<direction>both|tx|rx)|$)'
+    parent: interface
+    action: expand
+  - match: destination$|source$
+    child:
+    - match: erspan-id (?P<id>\d+)
+    - match: mtu (?P<mtu>\d+)
+    - match: ip address (?P<ipv4>\S+)
+    - match: origin ip address (?P<origin>\S+)
 - match: wireless profile policy (\S+)
   parent: policy_profile
   child:

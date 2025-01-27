@@ -7,6 +7,11 @@
 - match: ip name-server (?P<name_server>\S+)
 - match: ip route (\S+) (?P<nexthop>\S+)
   parent: route
+- match: ip access-list (\S+)
+  parent: ipv4_acl
+  child:
+    match: (\d+) (.*)
+    key: 1
 - match: callhome
   name: call_home
   child:
@@ -44,6 +49,28 @@
 - match: (?:no )?cdp enable
   name: cdp_run
   action: bool
+- match: vpc domain (\d+)
+  parent: vpc
+  child:
+  - match: (?:no )?peer-switch
+    name: peer_switch
+    action: bool
+  - match: role priority (?P<role_prio>\d+)
+  - match: system-priority (?P<system_prio>\d+)
+  - match: 'peer-keepalive destination (?P<pka_dest>\S+) source (?P<pka_source>\S+)(?: vrf (?P<pka_vrf>\S+))?'
+  - match: delay restore (?P<delay>\d+)
+  - match: (?:no )?peer-gateway
+    name: peer_gateway
+    action: bool
+  - match: (?:no )?auto-recovery
+    name: auto_recovery
+    action: bool
+  - match: (?:no )?ipv6 nd synchronize
+    name: nd_sync
+    action: bool
+  - match: (?:no )?ip arp synchronize
+    name: arp_sync
+    action: bool
 - match: interface (\S+)
   parent: interface
   child:
@@ -82,13 +109,13 @@
   - match: hsrp version (?P<version>\d+)
     parent: hsrp
   - match: hsrp (\d+)
-    name: hsrp
+    parent: hsrp
     child:
     - match: ip (?P<ipv4>\S+)
     - match: priority (?P<priority>\d+)
     - match: preempt$
       value: true
-    - match: preempt delay minimum (?P<delay_min>\d+)
+    - match: 'preempt delay minimum (?P<delay>\d+)(?: reload (?P<reload>\d+))?'
       parent: preempt
     - match: timers (?P<hello>\d+) (?P<dead>\d+)
       parent: timers
@@ -160,8 +187,12 @@
   - match: neighbor (\S+)
     parent: neighbor
     child:
+    - match: (?:no )?bfd
+      name: bfd
+      action: bool
     - match: remote-as (?P<remote_as>.*)
     - match: description (?P<description>.*)
+    - match: update-source (?P<update_source>\S+)
     - match: address-family (\S+)
       parent: af
   - match: vrf (\S+)
@@ -184,5 +215,6 @@
         action: bool
       - match: remote-as (?P<remote_as>.*)
       - match: description (?P<description>.*)
+      - match: update-source (?P<update_source>\S+)
       - match: address-family (\S+)
         parent: af

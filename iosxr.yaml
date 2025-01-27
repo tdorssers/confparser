@@ -1,5 +1,8 @@
 - match: hostname (?P<hostname>\S+)
 - match: domain name (?P<domain>\S+)
+- match: event manager environment (\S+) (.*)
+  parent: eem_env
+  key: 1
 - match: (?:no )?cdp
   name: cdp_run
   action: bool
@@ -59,15 +62,21 @@
       - match: member
         child:
           match: neighbor (?P<neighbor>\S+)
+- match: object-group network ipv4 (\S+)
+  parent: netv4_group
+  child:
+    match: ^(?P<prefix>\S+)$
+    actionall: list
 - match: ipv4 access-list (\S+)
   parent: ipv4_acl
   child:
-    match: (\d+) (?P<rule>.*)
+    match: (\d+) (.*)
+    key: 1
 - match: policy-map (\S+)
   parent: policy_map
   child:
-    match: class (\S+)
-    parent: class
+    match: class (?P<class>\S+)
+    actionall: list
 - match: nv
   child:
     match: satellite (\d+)
@@ -84,10 +93,9 @@
   - match: 'encapsulation dot1q (?P<dot1q>\d+)(?: second-dot1q (?P<second_dot1q>\d+))?'
   - match: rewrite ingress tag pop (?P<pop>\d) symmetric
   - match: mtu (?P<mtu>\d+)
-  - match: service-policy input (?P<input>\S+)
+  - match: service-policy (input|output) (\S+)
     parent: policy
-  - match: service-policy output (?P<output>\S+)
-    parent: policy
+    key: 1
   - match: bundle id (?P<id>\d+) mode (?P<mode>\S+)
     parent: bundle
   - match: mlacp iccp-group (?P<iccp_group>\d+)
@@ -98,10 +106,9 @@
     name: mode
   - match: ipv4 address (?P<ipv4>.*)
     actionall: cidr
-  - match: ipv4 access-group (?P<ingress>\S+) ingress
+  - match: ipv4 access-group (\S+) (ingress|egress)
     parent: ipv4_acl
-  - match: ipv4 access-group (?P<egress>\S+) egress
-    parent: ipv4_acl
+    key: 2
   - match: (?:no )?shutdown
     name: shutdown
     action: bool
@@ -119,10 +126,9 @@
     name: ipv4_features
     action: list
   - match: ipv6 address (?P<ipv6>.*)
-  - match: ipv6 access-group (?P<ingress>\S+) ingress
+  - match: ipv6 access-group (\S+) (ingress|egress)
     parent: ipv6_acl
-  - match: ipv6 access-group (?P<egress>\S+) egress
-    parent: ipv6_acl
+    key: 2
   - match: nv
     child:
       match: satellite-fabric-link satellite (\d+)
@@ -270,6 +276,8 @@
           match: split-horizon group core
           name: split_horizon_group
           value: 1
+      - match: neighbor (\S+) pw-id (?P<pw_id>\d+)
+        parent: neighbor
       - match: evi (?P<evi>\d+)
 - match: router static
   name: static
