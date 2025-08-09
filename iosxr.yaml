@@ -1,5 +1,4 @@
-- match: hostname (?P<hostname>\S+)
-- match: domain name (?P<domain>\S+)
+- match: hostname (?P<hostname>\S+)|domain name (?P<domain>\S+)
 - match: event manager environment (\S+) (.*)
   parent: eem_env
   key: 1
@@ -12,13 +11,16 @@
   - match: description (?P<description>.*)
   - match: address-family (\S+)
     child:
+    - match: (import|export) route-policy (\S+)
+      parent: route_policy
+      key: 1
     - match: import route-target
-      name: route-target
+      name: route_target
       child:
         match: (?P<import>.*)
         actionall: list
     - match: export route-target
-      name: route-target
+      name: route_target
       child:
         match: (?P<export>.*)
         actionall: list
@@ -40,9 +42,8 @@
   - match: profile (\S+) relay
     parent: profile
     child:
-      match: helper-address vrf (\S+) (?P<address>\S+)
-      parent: vrf
-      actionall: list
+      match: 'helper-address vrf (?P<vrf>\S+) (\S+)(?: giaddr (?P<giaddr>\S+))?'
+      parent: relay
   - match: interface (\S+) relay profile (?P<profile>\S+)
     parent: interface
 - match: monitor-session (\S+)
@@ -88,23 +89,19 @@
 - match: interface (?!preconfigure)(\S+) ?(?P<mode>l2transport)?
   parent: interface
   child:
-  - match: description (?P<description>.*)
-  - match: encapsulation (?P<dot1q>untagged)
+  - match: description (?P<description>.*)|mtu (?P<mtu>\d+)|mlacp iccp-group (?P<iccp_group>\d+)|lacp system mac (?P<lacp_sys_mac>\S+)|mac-address (?P<mac>\S+)|vrf (?P<vrf>\S+)
+  - match: arp timeout (?P<arp_timeout>\d+)|ipv6 address (?P<ipv6>.*)|rewrite ingress tag pop (?P<pop>\d) symmetric|encapsulation (?P<dot1q>untagged)
   - match: 'encapsulation dot1q (?P<dot1q>\d+)(?: second-dot1q (?P<second_dot1q>\d+))?'
-  - match: rewrite ingress tag pop (?P<pop>\d) symmetric
-  - match: mtu (?P<mtu>\d+)
   - match: service-policy (input|output) (\S+)
     parent: policy
     key: 1
   - match: bundle id (?P<id>\d+) mode (?P<mode>\S+)
     parent: bundle
-  - match: mlacp iccp-group (?P<iccp_group>\d+)
-  - match: lacp system mac (?P<lacp_sys_mac>\S+)
-  - match: mac-address (?P<mac>\S+)
-  - match: vrf (?P<vrf>\S+)
   - match: l2transport
     name: mode
-  - match: ipv4 address (?P<ipv4>.*)
+  - match: ipv4 address (?!.*secondary)(?P<ipv4>.*)
+    actionall: cidr
+  - match: ipv4 address (?P<secondary>.*) secondary
     actionall: cidr
   - match: ipv4 access-group (\S+) (ingress|egress)
     parent: ipv4_acl
@@ -114,6 +111,9 @@
     action: bool
   - match: (?:no )?cdp
     name: cdp_enable
+    action: bool
+  - match: (?:no )?host-routing
+    name: host_routing
     action: bool
   - match: ipv4 helper-address vrf (\S+) (?P<address>\S+)
     parent: ipv4_helper_vrf
@@ -125,7 +125,6 @@
   - match: proxy-arp
     name: ipv4_features
     action: list
-  - match: ipv6 address (?P<ipv6>.*)
   - match: ipv6 access-group (\S+) (ingress|egress)
     parent: ipv6_acl
     key: 2
@@ -148,7 +147,6 @@
         child:
           - match: sla operation profile (?P<sla_profile>\S+) target mep-id (\S+)
             parent: remote_mep
-  - match: arp timeout (?P<arp_timeout>\d+)
   - match: 'monitor-session (\S+) ethernet(?: direction (?P<direction>\S+))?'
     parent: monitor_session
     child:
@@ -195,15 +193,50 @@
   - match: evi (\d+)
     parent: evi
     child:
-      match: advertise-mac
+    - match: bgp
+      child:
+        match: route-target (?P<route_target>\S+)
+    - match: bvi-coupled-mode
+      name: bvi_coupled
+      value: true
+    - match: control-word-disable
+      name: control_word
+      value: false
+    - match: multicast
+      child:
+        match: source-connected
+        name: source_connected
+        value: true
+    - match: advertise-mac
       name: advertise_mac
+      value: true
+    - match: unknown-unicast-suppression
+      name: uu_suppress
       value: true
   - match: interface (\S+)
     parent: interface
     child:
       match: ethernet-segment
       child:
-        match: identifier type (?P<type>\d) (?P<esi>\S+)
+      - match: identifier type (?P<type>\d) (?P<esi>\S+)
+      - match: load-balancing-mode (?P<mode>\S+)
+      - match: service-carving manual
+        name: service_carving
+        child:
+          match: primary (?P<primary>\S+) secondary (?P<secondary>\S+)
+      - match: service-carving preference-based
+        name: service_carving
+        child:
+        - match: weight (?P<weight>\d)
+        - match: access-driven
+          name: access_driven
+          value: true
+      - match: convergence
+        child:
+          match: reroute
+          name: frr
+          value: true
+      - match: bgp route-target (?P<route_target>\S+)
 - match: l2vpn
   child:
   - match: redundancy
@@ -220,10 +253,9 @@
       match: p2p (\S+)
       parent: p2p
       child:
-      - match: description (?P<description>.*)
+      - match: description (?P<description>.*)|monitor-session (?P<monitor_session>\S+)
       - match: interface (?P<interface>\S+)
         actionall: list
-      - match: monitor-session (?P<monitor_session>\S+)
       - match: neighbor ipv[46] (\S+) pw-id (?P<pw_id>\d+)
         parent: neighbor
         child:
@@ -240,12 +272,8 @@
       match: bridge-domain (\S+)
       parent: bridge_domain
       child:
-      - match: description (?P<description>.*)
-      - match: storm-control unknown-unicast pps (?P<uucast>\d+)
-        parent: storm_control
-      - match: storm-control multicast pps (?P<mcast>\d+)
-        parent: storm_control
-      - match: storm-control broadcast pps (?P<bcast>\d+)
+      - match: description (?P<description>.*)|igmp snooping profile (?P<igmp>\S+)|evi (?P<evi>\d+)|multicast-source (?P<igmp_src>\S+)
+      - match: storm-control unknown-unicast pps (?P<uucast>\d+)|storm-control multicast pps (?P<mcast>\d+)|storm-control broadcast pps (?P<bcast>\d+)
         parent: storm_control
       - match: mac
         child:
@@ -257,7 +285,6 @@
             match: logging
             name: logging
             value: true
-      - match: igmp snooping profile (?P<igmp>\S+)
       - match: interface (\S+)
         parent: interface
         child:
@@ -268,6 +295,13 @@
         parent: vfi
         child:
         - match: vpn-id (?P<vpn_id>\d+)
+        - match: (?:no )?shutdown
+          name: shutdown
+          action: bool
+        - match: autodiscovery bgp
+          name: bgp_ad
+          child:
+          - match: route-target (?P<route_target>\S+)
         - match: neighbor (\S+) pw-id (?P<pw_id>\d+)
           parent: neighbor
       - match: routed interface (\S+)
@@ -278,7 +312,6 @@
           value: 1
       - match: neighbor (\S+) pw-id (?P<pw_id>\d+)
         parent: neighbor
-      - match: evi (?P<evi>\d+)
 - match: router static
   name: static
   child:
@@ -294,35 +327,42 @@
       child:
       - match: '([^! ]+)(?: vrf (?P<vrf>\S+))?(?: (?=[A-Tn])(?P<interface>\S+))?(?: (?=(?:\S*[\.:])+)(?P<nexthop>\S+))?(?: (?P<distance>\d+))?(?: tag (?P<tag>\d+))?(?: description "?(?P<description>[^"]*)"?)?(?: track (?P<track>\S+))?'
         grouping: implicit
+- match: router isis (?P<instance_id>\S+)
+  name: isis
+  child:
+  - match: is-type (?P<is_type>\S+)|net (?P<net>\S+)
+  - match: interface (\S+)
+    parent: interface
+    child:
+    - match: (?:no )?passive
+      name: passive
+      action: bool
+    - match: address-family (\S+) unicast
+      parent: af
+      child:
+      - match: 'metric (?P<default>\S+)(?: level (?P<level>\d))?'
+        parent: metric
 - match: router bgp (?P<local_as>\d+)
   name: bgp
   child:
   - match: neighbor-group (\S+)
     parent: neighbor_group
     child:
-    - match: remote-as (?P<remote_as>\S+)
-    - match: local-as (?P<local_as>\S+)
-    - match: bfd minimum-interval (?P<bfd_int>\d+)
-    - match: bfd multiplier (?P<bfd_mul>\d+)
+    - match: remote-as (?P<remote_as>\S+)|local-as (?P<local_as>\S+)|bfd minimum-interval (?P<bfd_int>\d+)|bfd multiplier (?P<bfd_mul>\d+)|description (?P<description>.*)|update-source (?P<update_source>\S+)
     - match: bfd fast-detect
       name: bfd
       action: bool
     - match: password encrypted (?P<password>\S+)
       actionall: decrypt7
-    - match: description (?P<description>.*)
-    - match: update-source (?P<update_source>\S+)
     - match: address-family (\S+) unicast
       parent: af
       child:
-      - match: route-policy (?P<in>\S+) in
-        parent: route_policy
-      - match: route-policy (?P<out>\S+) out
+      - match: route-policy (?P<in>\S+) in|route-policy (?P<out>\S+) out
         parent: route_policy
   - match: neighbor (\S+)
     parent: neighbor
     child:
-    - match: description (?P<description>.*)
-    - match: use neighbor-group (?P<neighbor_group>\S+)
+    - match: description (?P<description>.*)|use neighbor-group (?P<neighbor_group>\S+)
   - match: vrf (\S+)
     parent: vrf
     child:
@@ -342,24 +382,17 @@
     - match: neighbor (\S+)
       parent: neighbor
       child:
-      - match: remote-as (?P<remote_as>\S+)
-      - match: ebgp-multihop (?P<ebgp_multihop>\S+)
-      - match: local-as (?P<local_as>\S+)
-      - match: bfd minimum-interval (?P<bfd_int>\d+)
-      - match: bfd multiplier (?P<bfd_mul>\d+)
+      - match: remote-as (?P<remote_as>\S+)|ebgp-multihop (?P<ebgp_multihop>\S+)|local-as (?P<local_as>\S+)|bfd minimum-interval (?P<bfd_int>\d+)|bfd multiplier (?P<bfd_mul>\d+)
+      - match: description (?P<description>.*)|update-source (?P<update_source>\S+)
       - match: bfd fast-detect
         name: bfd
         action: bool
       - match: password encrypted (?P<password>\S+)
         actionall: decrypt7
-      - match: description (?P<description>.*)
-      - match: update-source (?P<update_source>\S+)
       - match: address-family (\S+) unicast
         parent: af
         child:
-        - match: route-policy (?P<in>\S+) in
-          parent: route_policy
-        - match: route-policy (?P<out>\S+) out
+        - match: route-policy (?P<in>\S+) in|route-policy (?P<out>\S+) out
           parent: route_policy
       - match: use neighbor-group (?P<neighbor_group>\S+)
 - match: router hsrp
@@ -368,26 +401,21 @@
     match: interface (\S+)
     parent: interface
     child:
-    - match: hsrp bfd minimum-interval (?P<bfd_int>\d+)
-    - match: hsrp bfd multiplier (?P<bfd_mul>\d+)
-    - match: hsrp delay minimum (?P<min>\d+) reload (?P<reload>\d+)
+    - match: hsrp bfd minimum-interval (?P<bfd_int>\d+)|hsrp bfd multiplier (?P<bfd_mul>\d+)|hsrp delay minimum (?P<min>\d+) reload (?P<reload>\d+)
     - match: address-family (\S+)
       parent: af
       child:
         match: 'hsrp (\d+)(?: version (?P<version>\d))?'
         parent: hsrp
         child:
-        - match: timers (?P<hello>\d+) (?P<hold>\d+)
+        - match: timers (?P<hello>\d+) (?P<hold>\d+)|priority (?P<priority>\d+)
         - match: 'preempt(?: delay (?P<delay>\d+))?'
           name: preempt
-          value: true
-        - match: priority (?P<priority>\d+)
+          value: true 
         - match: address (?P<address>\S+)$
         - match: address (?P<secondary>\S+) secondary
           actionall: list
-        - match: address global (?P<address>\S+)
-        - match: address linklocal (?P<linklocal>\S+)
-        - match: bfd fast-detect peer ipv[46] (?P<bfd_peer>\S+)
+        - match: address global (?P<address>\S+)|address linklocal (?P<linklocal>\S+)|bfd fast-detect peer ipv[46] (?P<bfd_peer>\S+)
 - match: multicast-routing
   name: multicast
   child:
@@ -396,6 +424,9 @@
     child:
       match: address-family (\S+)
       parent: af
+      child:
+      - match: mdt source (?P<mdt_src>\S+)
+      - match: mdt data (?P<mdt_data>\d+)
 - match: router igmp
   name: igmp
   child:

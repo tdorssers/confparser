@@ -1,10 +1,7 @@
-- match: version (?P<version>\S+)
-- match: hostname (?P<hostname>\S+)
+- match: version (?P<version>\S+)|hostname (?P<hostname>\S+)|ip domain[ -]name (?P<domain>\S+)|ip name-server (?P<name_server>\S+)
 - match: (?:no )?feature lldp
   name: lldp_run
   action: bool
-- match: ip domain name (?P<domain>\S+)
-- match: ip name-server (?P<name_server>\S+)
 - match: ip route (\S+) (?P<nexthop>\S+)
   parent: route
 - match: ip access-list (\S+)
@@ -12,6 +9,11 @@
   child:
     match: (\d+) (.*)
     key: 1
+- match: policy-map type qos (\S+)
+  parent: policy_map
+  child:
+    match: class (?P<class>\S+)
+    actionall: list
 - match: callhome
   name: call_home
   child:
@@ -65,6 +67,9 @@
   - match: (?:no )?auto-recovery
     name: auto_recovery
     action: bool
+  - match: (?:no )?fast-convergence
+    name: fast_convergence
+    action: bool
   - match: (?:no )?ipv6 nd synchronize
     name: nd_sync
     action: bool
@@ -74,29 +79,28 @@
 - match: interface (\S+)
   parent: interface
   child:
-  - match: description (?P<description>.*)
+  - match: description (?P<description>.*)|switchport mode (?P<mode>\S+)|switchport trunk native vlan (?P<native_vlan>\d+)|switchport access vlan (?P<access_vlan>\d+)
+  - match: vpc (?P<vpc>\S+)|fex associate (?P<fex>\d+)|spanning-tree port type edge (?P<stp_portfast>trunk)|spanning-tree bpdufilter (?P<stp_bpdufilter>.*)
+  - match: spanning-tree bpduguard (?P<stp_bpduguard>.*)|speed (?P<speed>\d+)|duplex (?P<duplex>\S+)|encapsulation dot1q (?P<dot1q>\d+)|ip address (?P<ipv4>\S+)
+  - match: vrf member (?P<vrf>\S+)|ip directed-broadcast ?(?P<ipv4_dir_bcast>.*)|ip pim (?P<ip_pim>.*-mode)|mtu (?P<mtu>\d+)|lacp max-bundle (?P<max_bundle>\d+)
+  - match: lacp rate (?P<lacp_rate>fast)|link debounce time (?P<link_debounce>\d+)|ip ospf authentication (?P<auth>\S+)
   - match: (?:no )?switchport$
     name: switchport
     action: bool
-  - match: switchport mode (?P<mode>\S+)
   - match: switchport trunk allowed vlan (?!add)(.*)
     name: allowed_vlan
     action: expand
   - match: switchport trunk allowed vlan add (.*)
     name: allowed_vlan
     action: expand
-  - match: switchport trunk native vlan (?P<native_vlan>\d+)
-  - match: switchport access vlan (?P<access_vlan>\d+)
-  - match: channel-group (?P<id>\d+) mode (?P<mode>\S+)
+  - match: 'channel-group (?P<id>\d+)(?: mode (?P<mode>\S+))?'
     parent: channel
-  - match: vpc (?P<vpc>\S+)
-  - match: fex associate (?P<fex>\d+)
-  - match: spanning-tree port type (?P<stp_port_type>.*)
-  - match: speed (?P<speed>\d+)
-  - match: duplex (?P<duplex>\S+)
-  - match: encapsulation dot1q (?P<dot1q>\d+)
-  - match: ip address (?P<ipv4>\S+)
-  - match: vrf member (?P<vrf>\S+)
+  - match: spanning-tree port type edge(?:(?!trunk).)*$
+    name: stp_portfast
+    value: enable
+  - match: spanning-tree port type network
+    name: stp_ba
+    value: true
   - match: bfd interval (?P<interval>\d+) min_rx (?P<min_rx>\d+) multiplier (?P<multiplier>\d+)
     parent: bfd
   - match: (?:no )?ip redirects
@@ -119,12 +123,9 @@
       parent: preempt
     - match: timers (?P<hello>\d+) (?P<dead>\d+)
       parent: timers
-  - match: ip directed-broadcast ?(?P<ipv4_dir_bcast>.*)
   - match: ip dhcp relay address (\S+)
     action: list
     name: ipv4_dhcp_relay
-  - match: ip pim (?P<ip_pim>.*-mode)
-  - match: mtu (?P<mtu>\d+)
   - match: ip access-group (?P<ingress>\S+) in
     parent: ipv4_acl
   - match: ip access-group (?P<egress>\S+) out
@@ -145,13 +146,21 @@
     parent: ospf
   - match: ip ospf network (?P<network>\S+)
     parent: ospf
-  - match: ip ospf authentication (?P<auth>\S+)
   - match: (?:no )?ip ospf passive-interface
     name: passive
     action: bool
     parent: ospf
   - match: (?:no )?ipv6 redirects
     name: ipv6_redirects
+    action: bool
+  - match: service-policy type qos (input|output) (\S+)
+    parent: policy
+    key: 1
+  - match: (?:no )?lacp vpc-convergence
+    name: lacp_convergence
+    action: bool
+  - match: (?:no )?vpc orphan-port suspend
+    name: orphan_port
     action: bool
 - match: router ospf (?P<instance_tag>\S+)
   name: ospf

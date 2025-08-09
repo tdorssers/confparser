@@ -1,6 +1,4 @@
-- match: version (?P<version>\S+)
-- match: hostname (?P<hostname>\S+)
-- match: ip domain[ -]name (?P<domain>\S+)
+- match: version (?P<version>\S+)|hostname (?P<hostname>\S+)|ip domain[ -]name (?P<domain>\S+)|vtp mode (?P<vtp_mode>\S+)|ip default-gateway (?P<default_gateway>\S+)
 - match: ip name-server (?P<name_server>\S+)
 - match: username (\S+).*? password 7 (?P<password>\S+)
   parent: username
@@ -38,7 +36,6 @@
   actionall: bool
 - match: ip igmp snooping vlan (\d+) mrouter interface (?P<mrouter>\S+)
   parent: igmp_vlan
-- match: vtp mode (?P<vtp_mode>\S+)
 - match: 'license boot level (?P<level>\S+)(?: addon (?P<addon>\S+))'
   parent: license
 - match: spanning-tree mode (?P<stp_mode>\S+)
@@ -84,26 +81,42 @@
 - match: interface (\S+)
   parent: interface
   child:
-  - match: description (?P<description>.*)
-  - match: (?:no )?switchport$
-    name: switchport
+  - match: description (?P<description>.*)|switchport access vlan (?P<access_vlan>\d+)|switchport trunk native vlan (?P<native_vlan>\d+)|switchport mode (?P<mode>\S+)|switchport voice vlan (?P<voice_vlan>\d+)
+  - match: spanning-tree portfast.*(?P<stp_portfast>trunk)|spanning-tree bpdufilter (?P<stp_bpdufilter>.*)|spanning-tree bpduguard (?P<stp_bpduguard>.*)|lacp rate (?P<lacp_rate>\S+)
+  - match: duplex (?P<duplex>.*)|power inline (?P<power_inline>.*)|dot1x pae (?P<dot1x_pae>\S+)|arp timeout (?P<arp_timeout>\d+)|(?:ip )?vrf forwarding (?P<vrf>\S+)
+  - match: (?:no )?snmp trap link-status
+    name: link_trap
     action: bool
-  - match: switchport access vlan (?P<access_vlan>\d+)
-  - match: switchport trunk native vlan (?P<native_vlan>\d+)
-  - match: switchport trunk allowed vlan (?!add)(\S+)
+  - match: (?:no )?lldp transmit
+    name: lldp_tx
+    action: bool
+  - match: (?:no )?lldp receive
+    name: lldp_rx
+    action: bool
+  - match: (?:no )?cdp enable
+    name: cdp_enable
+    action: bool
+  - match: switchport trunk allowed vlan (?:add )?(\S+)
     name: allowed_vlan
     action: expand
-  - match: switchport trunk allowed vlan add (\S+)
-    name: allowed_vlan
-    action: expand
-  - match: switchport mode (?P<mode>\S+)
   - match: switchport nonegotiate
     name: dtp
     value: false
-  - match: switchport voice vlan (?P<voice_vlan>\d+)
+  - match: (?:no )?shutdown
+    name: shutdown
+    action: bool
+  - match: speed (?P<speed>.*)
+    actionall: split
+  - match: spanning-tree portfast(?:(?!trunk).)*$
+    name: stp_portfast
+    value: enable
+  - match: service-policy input (?P<ingress>\S+)|service-policy output (?P<egress>\S+)
+    parent: service_policy
+  - match: (?:no )?switchport$
+    name: switchport
+    action: bool
   - match: mtu (?P<mtu>\d+)
   - match: encapsulation dot1Q (?P<dot1q>\d+)
-  - match: (?:ip )?vrf forwarding (?P<vrf>\S+)
   - match: ip address (?!.*secondary)(?P<ipv4>.*)
     actionall: cidr
   - match: ip address (?P<ipv4_secondary>.*) secondary
@@ -148,16 +161,6 @@
     actionall: bool
     key: 2
   - match: carrier-delay (?P<carrier_delay>\d+)
-  - match: (?:no )?shutdown
-    name: shutdown
-    action: bool
-  - match: power inline (?P<power_inline>.*)
-  - match: speed (?P<speed>.*)
-    actionall: split
-  - match: duplex (?P<duplex>.*)
-  - match: (?:no )?cdp enable
-    name: cdp_enable
-    action: bool
   - match: ipv6 address (?P<ipv6>\S+)
   - match: ipv6 nd (?P<ipv6_nd>.*)
   - match: (?:no )?ipv6 redirects
@@ -170,10 +173,6 @@
   - match: (?:no )?authentication open
     name: monitor_mode
     action: bool
-  - match: (?:no )?snmp trap link-status
-    name: link_trap
-    action: bool
-  - match: dot1x pae (?P<dot1x_pae>\S+)
   - match: cts manual
     child:
       match: policy static sgt (\d+)
@@ -182,12 +181,6 @@
     parent: storm_control
   - match: storm-control (\S+) level (?:(?P<level>[\d\.]+) ?(?P<level_low>[\d\.]+)?|(?:pps (?P<pps>\S+) ?(?P<pps_low>\S+)?)|(?:bps (?P<bps>\S+) ?(?P<bps_low>\S+)?))
     parent: storm_control
-  - match: (?:no )?lldp transmit
-    name: lldp_tx
-    action: bool
-  - match: (?:no )?lldp receive
-    name: lldp_rx
-    action: bool
   - match: bfd interval (?P<interval>\d+) min_rx (?P<min_rx>\d+) multiplier (?P<multiplier>\d+)
     parent: bfd
   - match: (?:no )?bfd echo
@@ -200,17 +193,6 @@
     parent: stp_vlan
     key: 1
     action: expand
-  - match: spanning-tree portfast(?:(?!trunk).)*$
-    name: stp_portfast
-    value: enable
-  - match: spanning-tree portfast.*(?P<stp_portfast>trunk)
-  - match: spanning-tree bpdufilter (?P<stp_bpdufilter>.*)
-  - match: spanning-tree bpduguard (?P<stp_bpduguard>.*)
-  - match: lacp rate (?P<lacp_rate>\S+)
-  - match: service-policy input (?P<ingress>\S+)
-    parent: service_policy
-  - match: service-policy output (?P<egress>\S+)
-    parent: service_policy
 - match: router bgp (?P<local_as>\d+)
   name: bgp
   child:
@@ -376,6 +358,21 @@
     - match: mtu (?P<mtu>\d+)
     - match: ip address (?P<ipv4>\S+)
     - match: origin ip address (?P<origin>\S+)
+- match: app-hosting appid (\S+)
+  parent: app_hosting
+  child:
+  - match: app-vnic (AppGigabitEthernet) trunk
+    parent: vnic
+    child:
+    - match: vlan (\d+) guest-interface (?P<guest_interface>\d+)
+      parent: vlan
+      child:
+      - match: guest-ipaddress (?P<guest_ip>\S+) netmask (?P<guest_mask>\S+)
+      - match: (?:no )?mirroring
+        name: mirroring
+        action: bool
+  - match: app-default-gateway (?P<default_gateway>\S+) guest-interface (\d+)
+    parent: guest_interface
 - match: wireless profile policy (\S+)
   parent: policy_profile
   child:
