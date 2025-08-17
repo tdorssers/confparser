@@ -204,7 +204,7 @@ class AutoDissector(object):
         return None
 
 
-def _parse(lines, context, indent=1, eob=None):
+def _parse(lines, context, indent=1, eob=None, eof='end'):
     """ Parse block style document through given nested dict of dissectors """
     result = Tree()
     # Push root reference to stack
@@ -215,6 +215,10 @@ def _parse(lines, context, indent=1, eob=None):
         # Jump out when the iterator runs out of lines
         line = next(lines, None)
         if line is None:
+            break
+        # Also jump out when end of file marker is seen
+        line = line.rstrip()
+        if line == eof:
             break
         # Pop branch reference of stack if not enough indentation
         while level and not line.startswith(' ' * indent * level):
@@ -232,9 +236,9 @@ def _parse(lines, context, indent=1, eob=None):
         # Iterate over list of dissectors
         for item in c_stack[-1]:
             if 'match' in item:
-                m = item['prog'].match(line[indent * level:].rstrip())
+                m = item['prog'].match(line[indent * level:])
             else:
-                m = item['prog'].search(line[indent * level:].rstrip())
+                m = item['prog'].search(line[indent * level:])
             # Skip if regular expression does not match
             if not m:
                 continue

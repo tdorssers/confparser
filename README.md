@@ -49,8 +49,11 @@ Default parameters allow parsing of most configuration files, these are examples
 | --- | --- |
 | NXOS | indent=2 |
 | VSP | indent=0, eob='exit' |
+| HPE | eof='return' |
+| Passport| eof='back' |
+| Aireos, ERS, Moxa | eof=None |
 
-The dissector returns a Tree object which is a nested dict with a parser property that references the dissector used. A dissector can be created from a string or a file and can parse an iterable or a file. Multiple dissectors can be registered to the AutoDissector which uses hints to match a dissector to a file. A hint is a regular expression that is unique to the first 15 lines of a file.
+The dissector returns a Tree object which is a nested dict with a parser property that references the dissector used. A dissector can be created from a string or a file and can parse an iterable or a file. Multiple dissectors can be registered to the AutoDissector which uses hints to match a dissector to a file. A hint is a regular expression that is unique to the first 23 lines of a file.
 
 ## Module contents
 
